@@ -1,5 +1,13 @@
 <Solution>
   <Folder Name="/common/" />
-  <Folder Name="/src/" />
-  <Folder Name="/tests/" />
+  <Folder Name="/src/">
+    <Project Path="src\CLI\CLI.csproj" Type="Classic C#" />
+    <Project Path="src\Compiler\Compiler.csproj" Type="Classic C#" />
+    <Project Path="src\Core\Core.csproj" Type="Classic C#" />
+    <Project Path="src\Runtime\Runtime.csproj" Type="Classic C#" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests\Compiler.Tests\Compiler.Tests.csproj" Type="Classic C#" />
+    <Project Path="tests\Runtime.Tests\Runtime.Tests.csproj" Type="Classic C#" />
+  </Folder>
 </Solution>
