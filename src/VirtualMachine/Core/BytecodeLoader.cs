@@ -34,11 +34,11 @@ public static class BytecodeLoader
     /// <exception cref="System.InvalidOperationException">Thrown when data format is invalid.</exception>
     public static BytecodeModule LoadFromBytes(byte[] data)
     {
-        System.ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(data);
 
         if (data.Length < 12)
         {
-            throw new System.InvalidOperationException(
+            throw new InvalidOperationException(
                 $"Invalid bytecode: file too small ({data.Length} bytes, minimum 12)");
         }
 
@@ -48,7 +48,7 @@ public static class BytecodeLoader
         uint magic = ReadUInt32(data, ref offset);
         if (magic != BytecodeFormat.MagicNumber)
         {
-            throw new System.InvalidOperationException(
+            throw new InvalidOperationException(
                 $"Invalid bytecode: wrong magic number (expected 0x{BytecodeFormat.MagicNumber:X8}, got 0x{magic:X8})");
         }
 
@@ -56,7 +56,7 @@ public static class BytecodeLoader
         uint version = ReadUInt32(data, ref offset);
         if (version != BytecodeFormat.Version)
         {
-            throw new System.InvalidOperationException(
+            throw new InvalidOperationException(
                 $"Unsupported bytecode version: {version} (expected {BytecodeFormat.Version})");
         }
 
@@ -83,7 +83,7 @@ public static class BytecodeLoader
             EnsureBytes(data, offset, (int)bytecodeSize);
 
             byte[] bytecode = new byte[bytecodeSize];
-            System.Array.Copy(data, offset, bytecode, 0, (int)bytecodeSize);
+            Array.Copy(data, offset, bytecode, 0, (int)bytecodeSize);
             offset += (int)bytecodeSize;
 
             FunctionInfo functionInfo = new(funcIndex, localVarCount, bytecode);
@@ -93,7 +93,7 @@ public static class BytecodeLoader
         // Validate entry point exists
         if (!functions.ContainsKey((ushort)entryPointIndex))
         {
-            throw new System.InvalidOperationException(
+            throw new InvalidOperationException(
                 $"Invalid bytecode: entry point function {entryPointIndex} not found");
         }
 
@@ -103,7 +103,7 @@ public static class BytecodeLoader
     private static uint ReadUInt32(byte[] data, ref int offset)
     {
         EnsureBytes(data, offset, 4);
-        uint value = System.BitConverter.ToUInt32(data, offset);
+        uint value = BitConverter.ToUInt32(data, offset);
         offset += 4;
         return value;
     }
@@ -111,7 +111,7 @@ public static class BytecodeLoader
     private static ushort ReadUInt16(byte[] data, ref int offset)
     {
         EnsureBytes(data, offset, 2);
-        ushort value = System.BitConverter.ToUInt16(data, offset);
+        ushort value = BitConverter.ToUInt16(data, offset);
         offset += 2;
         return value;
     }
@@ -120,7 +120,7 @@ public static class BytecodeLoader
     {
         if (offset + count > data.Length)
         {
-            throw new System.InvalidOperationException(
+            throw new InvalidOperationException(
                 $"Invalid bytecode: unexpected end of file at offset {offset}, needed {count} bytes");
         }
     }

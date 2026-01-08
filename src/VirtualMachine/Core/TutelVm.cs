@@ -71,7 +71,7 @@ public sealed class TutelVm
     {
         if (_module == null || _memory == null)
         {
-            throw new System.InvalidOperationException("No bytecode module loaded. Call Load() first.");
+            throw new InvalidOperationException("No bytecode module loaded. Call Load() first.");
         }
 
         // Reset memory state for a fresh run

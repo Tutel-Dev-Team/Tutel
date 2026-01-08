@@ -52,7 +52,7 @@ public static class VmLauncher
             Console.WriteLine(result);
             return 0;
         }
-        catch (System.IO.FileNotFoundException ex)
+        catch (FileNotFoundException ex)
         {
             Console.Error.WriteLine($"Error: {ex.Message}");
             return 1;

@@ -40,7 +40,7 @@ public sealed class CallStack
         {
             if (_frames.Count == 0)
             {
-                throw new System.InvalidOperationException("No active stack frame");
+                throw new InvalidOperationException("No active stack frame");
             }
 
             return _frames.Peek();
@@ -58,7 +58,7 @@ public sealed class CallStack
     {
         if (_frames.Count >= VmLimits.MaxCallStackDepth)
         {
-            throw new System.InvalidOperationException(
+            throw new InvalidOperationException(
                 $"Call stack overflow: maximum depth of {VmLimits.MaxCallStackDepth} exceeded");
         }
 
@@ -75,7 +75,7 @@ public sealed class CallStack
     {
         if (_frames.Count == 0)
         {
-            throw new System.InvalidOperationException("Call stack underflow: no frame to pop");
+            throw new InvalidOperationException("Call stack underflow: no frame to pop");
         }
 
         return _frames.Pop();

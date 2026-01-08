@@ -21,7 +21,7 @@ public static class InstructionDecoder
     {
         if (pc < 0 || pc >= bytecode.Length)
         {
-            throw new System.InvalidOperationException($"Program counter out of range: {pc}");
+            throw new InvalidOperationException($"Program counter out of range: {pc}");
         }
 
         byte opcodeByte = bytecode[pc];
@@ -74,7 +74,7 @@ public static class InstructionDecoder
             Opcode.PushInt
                 => DecodeWithInt64(bytecode, pc, opcode),
 
-            _ => throw new System.InvalidOperationException($"Unknown opcode: 0x{opcodeByte:X2} at PC={pc}"),
+            _ => throw new InvalidOperationException($"Unknown opcode: 0x{opcodeByte:X2} at PC={pc}"),
         };
     }
 
@@ -87,21 +87,21 @@ public static class InstructionDecoder
     private static DecodedInstruction DecodeWithUInt16(byte[] bytecode, int pc, Opcode opcode)
     {
         EnsureBytes(bytecode, pc, 3, opcode);
-        ushort value = System.BitConverter.ToUInt16(bytecode, pc + 1);
+        ushort value = BitConverter.ToUInt16(bytecode, pc + 1);
         return new DecodedInstruction(opcode, 3) { UInt16Arg = value };
     }
 
     private static DecodedInstruction DecodeWithInt32(byte[] bytecode, int pc, Opcode opcode)
     {
         EnsureBytes(bytecode, pc, 5, opcode);
-        int value = System.BitConverter.ToInt32(bytecode, pc + 1);
+        int value = BitConverter.ToInt32(bytecode, pc + 1);
         return new DecodedInstruction(opcode, 5) { Int32Arg = value };
     }
 
     private static DecodedInstruction DecodeWithInt64(byte[] bytecode, int pc, Opcode opcode)
     {
         EnsureBytes(bytecode, pc, 9, opcode);
-        long value = System.BitConverter.ToInt64(bytecode, pc + 1);
+        long value = BitConverter.ToInt64(bytecode, pc + 1);
         return new DecodedInstruction(opcode, 9) { Int64Arg = value };
     }
 
@@ -109,7 +109,7 @@ public static class InstructionDecoder
     {
         if (pc + needed > bytecode.Length)
         {
-            throw new System.InvalidOperationException(
+            throw new InvalidOperationException(
                 $"Incomplete instruction {opcode} at PC={pc}: need {needed} bytes, have {bytecode.Length - pc}");
         }
     }

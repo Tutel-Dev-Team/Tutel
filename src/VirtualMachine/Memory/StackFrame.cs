@@ -48,7 +48,7 @@ public sealed class StackFrame
     {
         if (index >= _localVariables.Length)
         {
-            throw new System.IndexOutOfRangeException(
+            throw new IndexOutOfRangeException(
                 $"Local variable index {index} out of range (function has {_localVariables.Length} locals)");
         }
 
@@ -65,7 +65,7 @@ public sealed class StackFrame
     {
         if (index >= _localVariables.Length)
         {
-            throw new System.IndexOutOfRangeException(
+            throw new IndexOutOfRangeException(
                 $"Local variable index {index} out of range (function has {_localVariables.Length} locals)");
         }
 

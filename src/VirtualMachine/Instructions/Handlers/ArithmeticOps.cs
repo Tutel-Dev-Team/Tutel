@@ -65,7 +65,7 @@ public static class ArithmeticOps
 
         if (b == 0)
         {
-            throw new System.DivideByZeroException("Division by zero");
+            throw new DivideByZeroException("Division by zero");
         }
 
         stack.Push(a / b);
@@ -86,7 +86,7 @@ public static class ArithmeticOps
 
         if (b == 0)
         {
-            throw new System.DivideByZeroException("Modulo by zero");
+            throw new DivideByZeroException("Modulo by zero");
         }
 
         stack.Push(a % b);

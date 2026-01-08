@@ -57,7 +57,7 @@ public static class OpcodeInfo
             // 9-byte instructions (opcode + int64)
             Opcode.PushInt => 9,
 
-            _ => throw new System.ArgumentOutOfRangeException(nameof(opcode), opcode, $"Unknown opcode: 0x{(byte)opcode:X2}"),
+            _ => throw new ArgumentOutOfRangeException(nameof(opcode), opcode, $"Unknown opcode: 0x{(byte)opcode:X2}"),
         };
     }
 }

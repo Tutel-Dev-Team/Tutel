@@ -34,7 +34,7 @@ public sealed class Heap
     {
         if (size < 0)
         {
-            throw new System.ArgumentOutOfRangeException(nameof(size), size, "Array size cannot be negative");
+            throw new ArgumentOutOfRangeException(nameof(size), size, "Array size cannot be negative");
         }
 
         long[] array = new long[size];
@@ -107,7 +107,7 @@ public sealed class Heap
     {
         if (index < 0 || index >= array.Length)
         {
-            throw new System.IndexOutOfRangeException(
+            throw new IndexOutOfRangeException(
                 $"Array index {index} out of bounds for array of length {array.Length}");
         }
     }
@@ -116,7 +116,7 @@ public sealed class Heap
     {
         if (handle < 0 || handle >= _arrays.Count)
         {
-            throw new System.IndexOutOfRangeException($"Invalid array handle: {handle}");
+            throw new IndexOutOfRangeException($"Invalid array handle: {handle}");
         }
     }
 }

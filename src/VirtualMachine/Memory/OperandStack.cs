@@ -39,7 +39,7 @@ public sealed class OperandStack
     {
         if (_stack.Count >= VmLimits.MaxOperandStackSize)
         {
-            throw new System.InvalidOperationException(
+            throw new InvalidOperationException(
                 $"Stack overflow: cannot push, stack has reached maximum size of {VmLimits.MaxOperandStackSize}");
         }
 
@@ -55,7 +55,7 @@ public sealed class OperandStack
     {
         if (_stack.Count == 0)
         {
-            throw new System.InvalidOperationException("Stack underflow: cannot pop from empty stack");
+            throw new InvalidOperationException("Stack underflow: cannot pop from empty stack");
         }
 
         return _stack.Pop();
@@ -70,7 +70,7 @@ public sealed class OperandStack
     {
         if (_stack.Count == 0)
         {
-            throw new System.InvalidOperationException("Stack underflow: cannot peek at empty stack");
+            throw new InvalidOperationException("Stack underflow: cannot peek at empty stack");
         }
 
         return _stack.Peek();

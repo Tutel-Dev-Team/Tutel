@@ -18,7 +18,7 @@ public sealed class ExecutionEngine
     /// <returns>The execution result.</returns>
     public long Execute(Instructions.ExecutionContext context)
     {
-        System.ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(context);
 
         while (!context.Halted)
         {
@@ -150,7 +150,7 @@ public sealed class ExecutionEngine
                 return false;
 
             default:
-                throw new System.InvalidOperationException(
+                throw new InvalidOperationException(
                     $"Unhandled opcode: {instruction.Opcode} (0x{(byte)instruction.Opcode:X2}) at PC={context.ProgramCounter}");
         }
     }

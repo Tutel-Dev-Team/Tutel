@@ -18,8 +18,8 @@ public sealed class ExecutionContext
     /// <param name="memory">The memory manager.</param>
     public ExecutionContext(BytecodeModule module, MemoryManager memory)
     {
-        System.ArgumentNullException.ThrowIfNull(module);
-        System.ArgumentNullException.ThrowIfNull(memory);
+        ArgumentNullException.ThrowIfNull(module);
+        ArgumentNullException.ThrowIfNull(memory);
         Module = module;
         Memory = memory;
         CurrentFunction = module.GetEntryPoint();
@@ -80,7 +80,7 @@ public sealed class ExecutionContext
     public int ReadInt32()
     {
         EnsureBytesAvailable(4);
-        int value = System.BitConverter.ToInt32(Bytecode, ProgramCounter);
+        int value = BitConverter.ToInt32(Bytecode, ProgramCounter);
         ProgramCounter += 4;
         return value;
     }
@@ -92,7 +92,7 @@ public sealed class ExecutionContext
     public long ReadInt64()
     {
         EnsureBytesAvailable(8);
-        long value = System.BitConverter.ToInt64(Bytecode, ProgramCounter);
+        long value = BitConverter.ToInt64(Bytecode, ProgramCounter);
         ProgramCounter += 8;
         return value;
     }
@@ -104,7 +104,7 @@ public sealed class ExecutionContext
     public ushort ReadUInt16()
     {
         EnsureBytesAvailable(2);
-        ushort value = System.BitConverter.ToUInt16(Bytecode, ProgramCounter);
+        ushort value = BitConverter.ToUInt16(Bytecode, ProgramCounter);
         ProgramCounter += 2;
         return value;
     }
@@ -133,7 +133,7 @@ public sealed class ExecutionContext
     {
         if (ProgramCounter + count > Bytecode.Length)
         {
-            throw new System.InvalidOperationException(
+            throw new InvalidOperationException(
                 $"Unexpected end of bytecode: PC={ProgramCounter}, need {count} bytes, have {Bytecode.Length - ProgramCounter}");
         }
     }

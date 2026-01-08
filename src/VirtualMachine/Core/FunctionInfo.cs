@@ -16,7 +16,7 @@ public sealed class FunctionInfo
     /// <param name="bytecode">The function bytecode.</param>
     public FunctionInfo(ushort index, ushort localVariableCount, byte[] bytecode)
     {
-        System.ArgumentNullException.ThrowIfNull(bytecode);
+        ArgumentNullException.ThrowIfNull(bytecode);
         Index = index;
         LocalVariableCount = localVariableCount;
         Bytecode = bytecode;

@@ -23,7 +23,7 @@ public sealed class BytecodeModule
         uint entryPointIndex,
         Dictionary<ushort, FunctionInfo> functions)
     {
-        System.ArgumentNullException.ThrowIfNull(functions);
+        ArgumentNullException.ThrowIfNull(functions);
         Version = version;
         GlobalVariableCount = globalVariableCount;
         EntryPointIndex = entryPointIndex;

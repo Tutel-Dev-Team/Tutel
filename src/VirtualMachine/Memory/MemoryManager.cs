@@ -20,7 +20,7 @@ public sealed class MemoryManager
     {
         if (globalVariableCount < 0 || globalVariableCount > VmLimits.MaxGlobalVariables)
         {
-            throw new System.ArgumentOutOfRangeException(
+            throw new ArgumentOutOfRangeException(
                 nameof(globalVariableCount),
                 globalVariableCount,
                 $"Global variable count must be between 0 and {VmLimits.MaxGlobalVariables}");
@@ -104,14 +104,14 @@ public sealed class MemoryManager
         OperandStack.Clear();
         CallStack.Clear();
         Heap.Clear();
-        System.Array.Clear(_globalVariables);
+        Array.Clear(_globalVariables);
     }
 
     private void ValidateGlobalIndex(ushort index)
     {
         if (index >= _globalVariables.Length)
         {
-            throw new System.IndexOutOfRangeException(
+            throw new IndexOutOfRangeException(
                 $"Global variable index {index} out of range (have {_globalVariables.Length} globals)");
         }
     }
