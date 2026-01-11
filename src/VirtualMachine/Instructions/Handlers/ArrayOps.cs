@@ -11,7 +11,7 @@ namespace Tutel.VirtualMachine.Instructions.Handlers;
 public static class ArrayOps
 {
     /// <summary>
-    /// Executes ARRAY_NEW: Pop size, allocate array, push handle.
+    /// Executes ARRAY_NEW: Pop size, allocate array, push tagged handle.
     /// </summary>
     /// <param name="context">Execution context.</param>
     /// <param name="instruction">Decoded instruction.</param>
@@ -19,15 +19,14 @@ public static class ArrayOps
     {
         _ = instruction; // Unused
         OperandStack stack = context.Memory.OperandStack;
-        Heap heap = context.Memory.Heap;
 
         long size = stack.Pop();
-        int handle = heap.AllocateArray((int)size);
-        stack.Push(handle);
+        long taggedHandle = context.Memory.AllocateArray((int)size);
+        stack.Push(taggedHandle);
     }
 
     /// <summary>
-    /// Executes ARRAY_LOAD: Pop index, pop handle, push array[index].
+    /// Executes ARRAY_LOAD: Pop index, pop tagged handle, push array[index].
     /// </summary>
     /// <param name="context">Execution context.</param>
     /// <param name="instruction">Decoded instruction.</param>
@@ -35,16 +34,22 @@ public static class ArrayOps
     {
         _ = instruction; // Unused
         OperandStack stack = context.Memory.OperandStack;
-        Heap heap = context.Memory.Heap;
+        IGarbageCollector gc = context.Memory.GC;
 
         long index = stack.Pop();
-        int handle = (int)stack.Pop();
-        long value = heap.GetElement(handle, (int)index);
+        long taggedHandle = stack.Pop();
+        if (!Value.IsArray(taggedHandle))
+        {
+            throw new InvalidOperationException($"Expected array handle, got {taggedHandle}");
+        }
+
+        int handle = Value.GetHandle(taggedHandle);
+        long value = gc.GetElement(handle, (int)index);
         stack.Push(value);
     }
 
     /// <summary>
-    /// Executes ARRAY_STORE: Pop value, pop index, pop handle, array[index] = value.
+    /// Executes ARRAY_STORE: Pop value, pop index, pop tagged handle, array[index] = value.
     /// </summary>
     /// <param name="context">Execution context.</param>
     /// <param name="instruction">Decoded instruction.</param>
@@ -52,16 +57,22 @@ public static class ArrayOps
     {
         _ = instruction; // Unused
         OperandStack stack = context.Memory.OperandStack;
-        Heap heap = context.Memory.Heap;
+        IGarbageCollector gc = context.Memory.GC;
 
         long value = stack.Pop();
         long index = stack.Pop();
-        int handle = (int)stack.Pop();
-        heap.SetElement(handle, (int)index, value);
+        long taggedHandle = stack.Pop();
+        if (!Value.IsArray(taggedHandle))
+        {
+            throw new InvalidOperationException($"Expected array handle, got {taggedHandle}");
+        }
+
+        int handle = Value.GetHandle(taggedHandle);
+        gc.SetElement(handle, (int)index, value);
     }
 
     /// <summary>
-    /// Executes ARRAY_LEN: Pop handle, push array length.
+    /// Executes ARRAY_LEN: Pop tagged handle, push array length.
     /// </summary>
     /// <param name="context">Execution context.</param>
     /// <param name="instruction">Decoded instruction.</param>
@@ -69,10 +80,16 @@ public static class ArrayOps
     {
         _ = instruction; // Unused
         OperandStack stack = context.Memory.OperandStack;
-        Heap heap = context.Memory.Heap;
+        IGarbageCollector gc = context.Memory.GC;
 
-        int handle = (int)stack.Pop();
-        int length = heap.GetArrayLength(handle);
+        long taggedHandle = stack.Pop();
+        if (!Value.IsArray(taggedHandle))
+        {
+            throw new InvalidOperationException($"Expected array handle, got {taggedHandle}");
+        }
+
+        int handle = Value.GetHandle(taggedHandle);
+        int length = gc.GetArrayLength(handle);
         stack.Push(length);
     }
 }

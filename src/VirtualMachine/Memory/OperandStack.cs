@@ -92,4 +92,13 @@ public sealed class OperandStack
     {
         _stack.Clear();
     }
+
+    /// <summary>
+    /// Enumerates all values on the stack for garbage collection.
+    /// </summary>
+    /// <returns>An enumerable of all stack values.</returns>
+    internal IEnumerable<long> EnumerateValues()
+    {
+        return _stack;
+    }
 }
