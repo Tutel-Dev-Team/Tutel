@@ -20,7 +20,7 @@ public sealed class ExecutionEngine
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        while (!context.Halted)
+        while (!context.Halted && context.ProgramCounter >= 0)
         {
             ExecuteNextInstruction(context);
         }
