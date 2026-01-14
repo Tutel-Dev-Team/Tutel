@@ -16,7 +16,8 @@ public sealed class MemoryManager
     /// Initializes a new instance of the <see cref="MemoryManager"/> class.
     /// </summary>
     /// <param name="globalVariableCount">Number of global variables to allocate.</param>
-    public MemoryManager(int globalVariableCount)
+    /// <param name="gc">Optional garbage collector. If null, uses ManagedHeap with GC.</param>
+    public MemoryManager(int globalVariableCount, IGarbageCollector? gc = null)
     {
         if (globalVariableCount < 0 || globalVariableCount > VmLimits.MaxGlobalVariables)
         {
@@ -28,7 +29,7 @@ public sealed class MemoryManager
 
         OperandStack = new OperandStack();
         CallStack = new CallStack();
-        Heap = new Heap();
+        GC = gc ?? new ManagedHeap();
         _globalVariables = new long[globalVariableCount];
     }
 
@@ -43,9 +44,15 @@ public sealed class MemoryManager
     public CallStack CallStack { get; }
 
     /// <summary>
-    /// Gets the heap for array storage.
+    /// Gets the garbage collector for array storage.
     /// </summary>
-    public Heap Heap { get; }
+    public IGarbageCollector GC { get; }
+
+    /// <summary>
+    /// Gets the heap for array storage (legacy compatibility).
+    /// </summary>
+    [Obsolete("Use GC property instead. This property returns a wrapper for backward compatibility.")]
+    public Heap Heap => new HeapWrapper(GC);
 
     /// <summary>
     /// Gets the number of global variables.
@@ -103,8 +110,32 @@ public sealed class MemoryManager
     {
         OperandStack.Clear();
         CallStack.Clear();
-        Heap.Clear();
+        GC.Clear();
         Array.Clear(_globalVariables);
+    }
+
+    /// <summary>
+    /// Runs garbage collection to free unreachable arrays.
+    /// </summary>
+    public void CollectGarbage()
+    {
+        GC.Collect(this);
+    }
+
+    /// <summary>
+    /// Allocates a new array, automatically triggering GC if threshold is reached.
+    /// </summary>
+    /// <param name="size">The number of elements in the array.</param>
+    /// <returns>A tagged handle to the allocated array.</returns>
+    internal long AllocateArray(int size)
+    {
+        // Trigger GC if we're using ManagedHeap and threshold is reached
+        if (GC is ManagedHeap managedHeap && managedHeap.ShouldCollect())
+        {
+            CollectGarbage();
+        }
+
+        return GC.Allocate(size);
     }
 
     private void ValidateGlobalIndex(ushort index)

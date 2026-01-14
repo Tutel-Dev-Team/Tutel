@@ -88,4 +88,13 @@ public sealed class CallStack
     {
         _frames.Clear();
     }
+
+    /// <summary>
+    /// Enumerates all frames on the call stack for garbage collection.
+    /// </summary>
+    /// <returns>An enumerable of all stack frames.</returns>
+    internal IEnumerable<StackFrame> EnumerateFrames()
+    {
+        return _frames;
+    }
 }

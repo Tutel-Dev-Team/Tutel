@@ -71,4 +71,13 @@ public sealed class StackFrame
 
         _localVariables[index] = value;
     }
+
+    /// <summary>
+    /// Enumerates all local variable values for garbage collection.
+    /// </summary>
+    /// <returns>An enumerable of all local variable values.</returns>
+    internal IEnumerable<long> EnumerateLocals()
+    {
+        return _localVariables;
+    }
 }
