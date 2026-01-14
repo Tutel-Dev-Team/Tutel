@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Tutel.VirtualMachine.Core;
+using Tutel.VirtualMachine.Jit;
 using Tutel.VirtualMachine.Memory;
 
 namespace Tutel.VirtualMachine.Instructions;
@@ -16,7 +17,8 @@ public sealed class ExecutionContext
     /// </summary>
     /// <param name="module">The bytecode module being executed.</param>
     /// <param name="memory">The memory manager.</param>
-    public ExecutionContext(BytecodeModule module, MemoryManager memory)
+    /// <param name="jit">The jit runtime.</param>
+    public ExecutionContext(BytecodeModule module, MemoryManager memory, IJitRuntime jit)
     {
         ArgumentNullException.ThrowIfNull(module);
         ArgumentNullException.ThrowIfNull(memory);
@@ -26,6 +28,7 @@ public sealed class ExecutionContext
         ProgramCounter = 0;
         Halted = false;
         Result = 0;
+        Jit = jit;
     }
 
     /// <summary>
@@ -62,6 +65,8 @@ public sealed class ExecutionContext
     /// Gets the current bytecode array.
     /// </summary>
     public byte[] Bytecode => CurrentFunction.Bytecode;
+
+    public IJitRuntime Jit { get; }
 
     /// <summary>
     /// Reads a byte at the current PC and advances PC.
