@@ -41,4 +41,18 @@ public sealed class FunctionInfo
     /// Gets the bytecode size in bytes.
     /// </summary>
     public int BytecodeSize => Bytecode.Length;
+
+    public int CallCount { get; set; }
+
+    public IntPtr NativePtr { get; set; }
+
+    public Delegate? NativeDelegate { get; set; }
+
+    public bool JitFailed { get; set; }
+
+    public int JitCompileCount { get; set; }
+
+    public int JitExecutionCount { get; set; }
+
+    public long JitTotalTicks { get; set; }
 }
