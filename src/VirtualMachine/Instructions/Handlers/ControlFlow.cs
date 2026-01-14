@@ -12,7 +12,8 @@ namespace Tutel.VirtualMachine.Instructions.Handlers;
 public static class ControlFlow
 {
     /// <summary>
-    /// Executes JMP: PC += offset (unconditional jump).
+    /// Executes JMP: PC = PC + instruction_size + offset (unconditional jump).
+    /// Offset is relative to the NEXT instruction per spec.
     /// Returns the new PC instead of advancing normally.
     /// </summary>
     /// <param name="context">Execution context.</param>
@@ -20,13 +21,14 @@ public static class ControlFlow
     /// <returns>True if PC was modified (jump taken).</returns>
     public static bool Jmp(ExecutionContext context, in DecodedInstruction instruction)
     {
-        // Offset is relative to the start of the instruction
-        context.ProgramCounter += instruction.Int32Arg;
+        // Offset is relative to the next instruction (after this JMP)
+        context.ProgramCounter += instruction.Size + instruction.Int32Arg;
         return true; // Indicate PC was modified
     }
 
     /// <summary>
-    /// Executes JZ: Pop A, if A==0: PC += offset.
+    /// Executes JZ: Pop A, if A==0: PC = PC + instruction_size + offset.
+    /// Offset is relative to the NEXT instruction per spec.
     /// </summary>
     /// <param name="context">Execution context.</param>
     /// <param name="instruction">Decoded instruction.</param>
@@ -36,8 +38,8 @@ public static class ControlFlow
         long value = context.Memory.OperandStack.Pop();
         if (value == 0)
         {
-            // Jump relative to start of instruction
-            context.ProgramCounter += instruction.Int32Arg;
+            // Jump relative to next instruction
+            context.ProgramCounter += instruction.Size + instruction.Int32Arg;
             return true;
         }
 
@@ -45,7 +47,8 @@ public static class ControlFlow
     }
 
     /// <summary>
-    /// Executes JNZ: Pop A, if A!=0: PC += offset.
+    /// Executes JNZ: Pop A, if A!=0: PC = PC + instruction_size + offset.
+    /// Offset is relative to the NEXT instruction per spec.
     /// </summary>
     /// <param name="context">Execution context.</param>
     /// <param name="instruction">Decoded instruction.</param>
@@ -55,8 +58,8 @@ public static class ControlFlow
         long value = context.Memory.OperandStack.Pop();
         if (value != 0)
         {
-            // Jump relative to start of instruction
-            context.ProgramCounter += instruction.Int32Arg;
+            // Jump relative to next instruction
+            context.ProgramCounter += instruction.Size + instruction.Int32Arg;
             return true;
         }
 
@@ -64,7 +67,8 @@ public static class ControlFlow
     }
 
     /// <summary>
-    /// Executes CALL: Push current frame, jump to function.
+    /// Executes CALL: Pop arguments, push new frame, jump to function.
+    /// Arguments are popped from operand stack and stored in callee's locals 0..arity-1.
     /// </summary>
     /// <param name="context">Execution context.</param>
     /// <param name="instruction">Decoded instruction.</param>
@@ -77,11 +81,26 @@ public static class ControlFlow
         // Calculate return address (after this CALL instruction)
         int returnAddress = context.ProgramCounter + instruction.Size;
 
+        // Pop arguments from operand stack (in reverse order, so we store correctly)
+        // Arguments are pushed left-to-right, so we pop right-to-left
+        byte arity = targetFunc.Arity;
+        long[] args = new long[arity];
+        for (int i = arity - 1; i >= 0; i--)
+        {
+            args[i] = context.Memory.OperandStack.Pop();
+        }
+
         // Push new frame with return address
         context.Memory.CallStack.PushFrame(
             context.CurrentFunction.Index,
             returnAddress,
             targetFunc.LocalVariableCount);
+
+        // Store arguments in the new frame's local variables
+        for (int i = 0; i < arity; i++)
+        {
+            context.Memory.CallStack.CurrentFrame.SetLocal((byte)i, args[i]);
+        }
 
         // Switch to target function (sets PC to 0)
         context.SwitchToFunction(funcIndex);
@@ -90,7 +109,8 @@ public static class ControlFlow
     }
 
     /// <summary>
-    /// Executes RET: Pop return value, pop frame, restore PC, push return value.
+    /// Executes RET: Pop return value (or 0 if stack empty), pop frame, restore PC, push return value.
+    /// If returning from entry function (returnAddress == -1), halt execution.
     /// </summary>
     /// <param name="context">Execution context.</param>
     /// <param name="instruction">Decoded instruction.</param>
@@ -102,11 +122,20 @@ public static class ControlFlow
         OperandStack stack = context.Memory.OperandStack;
         CallStack callStack = context.Memory.CallStack;
 
-        // Pop return value from stack
-        long returnValue = stack.Pop();
+        // Pop return value from stack (use 0 if stack is empty - void function)
+        long returnValue = stack.IsEmpty ? 0 : stack.Pop();
 
         // Pop the current frame to get return info
         StackFrame frame = callStack.PopFrame();
+
+        // Check if this is return from entry function (sentinel return address)
+        if (frame.ReturnAddress < 0)
+        {
+            // Returning from entry function - halt execution with return value
+            context.Result = returnValue;
+            context.Halted = true;
+            return true;
+        }
 
         // Restore the calling function
         context.SwitchToFunction(frame.FunctionIndex);

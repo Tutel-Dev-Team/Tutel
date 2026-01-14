@@ -18,9 +18,9 @@ public sealed class BytecodeModule
     /// <param name="entryPointIndex">Entry point function index.</param>
     /// <param name="functions">Dictionary of functions by index.</param>
     public BytecodeModule(
-        uint version,
+        ushort version,
         ushort globalVariableCount,
-        uint entryPointIndex,
+        ushort entryPointIndex,
         Dictionary<ushort, FunctionInfo> functions)
     {
         ArgumentNullException.ThrowIfNull(functions);
@@ -33,7 +33,7 @@ public sealed class BytecodeModule
     /// <summary>
     /// Gets the bytecode version.
     /// </summary>
-    public uint Version { get; }
+    public ushort Version { get; }
 
     /// <summary>
     /// Gets the number of global variables.
@@ -43,7 +43,7 @@ public sealed class BytecodeModule
     /// <summary>
     /// Gets the entry point function index.
     /// </summary>
-    public uint EntryPointIndex { get; }
+    public ushort EntryPointIndex { get; }
 
     /// <summary>
     /// Gets the number of functions in the module.
@@ -72,7 +72,7 @@ public sealed class BytecodeModule
     /// <returns>The entry point function info.</returns>
     public FunctionInfo GetEntryPoint()
     {
-        return GetFunction((ushort)EntryPointIndex);
+        return GetFunction(EntryPointIndex);
     }
 
     /// <summary>

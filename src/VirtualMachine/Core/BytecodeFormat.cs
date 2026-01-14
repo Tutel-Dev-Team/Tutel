@@ -14,7 +14,7 @@ public static class BytecodeFormat
     public static uint MagicNumber => 0x4C42434D;
 
     /// <summary>
-    /// Gets the current bytecode version.
+    /// Gets the current bytecode version (2 bytes per spec).
     /// </summary>
-    public static uint Version => 0x00000001;
+    public static ushort Version => 0x0001;
 }

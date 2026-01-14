@@ -78,7 +78,7 @@ public class VmIntegrationTests
     public void DivByZeroThrows()
     {
         byte[] bytecode = CreateBytecode(new byte[] { 0x01, 10, 0, 0, 0, 0, 0, 0, 0, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0x13, 0xFF });
-        Assert.Throws<System.DivideByZeroException>(() => TutelVm.RunBytes(bytecode));
+        Assert.Throws<DivideByZeroException>(() => TutelVm.RunBytes(bytecode));
     }
 
     [Fact]
@@ -112,21 +112,24 @@ public class VmIntegrationTests
     [Fact]
     public void JmpUnconditional()
     {
-        byte[] bytecode = CreateBytecode(new byte[] { 0x30, 14, 0, 0, 0, 0x01, 99, 0, 0, 0, 0, 0, 0, 0, 0x01, 42, 0, 0, 0, 0, 0, 0, 0, 0xFF });
+        // JMP offset is from NEXT instruction. Original wanted to skip 9 bytes (PUSH 99), so offset = 9
+        byte[] bytecode = CreateBytecode(new byte[] { 0x30, 9, 0, 0, 0, 0x01, 99, 0, 0, 0, 0, 0, 0, 0, 0x01, 42, 0, 0, 0, 0, 0, 0, 0, 0xFF });
         Assert.Equal(42, TutelVm.RunBytes(bytecode));
     }
 
     [Fact]
     public void JzJumpsOnZero()
     {
-        byte[] bytecode = CreateBytecode(new byte[] { 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0x31, 14, 0, 0, 0, 0x01, 99, 0, 0, 0, 0, 0, 0, 0, 0x01, 42, 0, 0, 0, 0, 0, 0, 0, 0xFF });
+        // After PUSH 0 (9 bytes), JZ checks if zero and jumps. Offset from next = 9 bytes to skip PUSH 99
+        byte[] bytecode = CreateBytecode(new byte[] { 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0x31, 9, 0, 0, 0, 0x01, 99, 0, 0, 0, 0, 0, 0, 0, 0x01, 42, 0, 0, 0, 0, 0, 0, 0, 0xFF });
         Assert.Equal(42, TutelVm.RunBytes(bytecode));
     }
 
     [Fact]
     public void JnzJumpsOnNonZero()
     {
-        byte[] bytecode = CreateBytecode(new byte[] { 0x01, 1, 0, 0, 0, 0, 0, 0, 0, 0x32, 14, 0, 0, 0, 0x01, 99, 0, 0, 0, 0, 0, 0, 0, 0x01, 42, 0, 0, 0, 0, 0, 0, 0, 0xFF });
+        // After PUSH 1 (9 bytes), JNZ checks if non-zero and jumps. Offset from next = 9 bytes to skip PUSH 99
+        byte[] bytecode = CreateBytecode(new byte[] { 0x01, 1, 0, 0, 0, 0, 0, 0, 0, 0x32, 9, 0, 0, 0, 0x01, 99, 0, 0, 0, 0, 0, 0, 0, 0x01, 42, 0, 0, 0, 0, 0, 0, 0, 0xFF });
         Assert.Equal(42, TutelVm.RunBytes(bytecode));
     }
 
@@ -170,8 +173,13 @@ public class VmIntegrationTests
     [Fact]
     public void CallWithArgs()
     {
+        // func0: Push 10, Push 20, Call func1, Halt
         byte[] func0 = new byte[] { 0x01, 10, 0, 0, 0, 0, 0, 0, 0, 0x01, 20, 0, 0, 0, 0, 0, 0, 0, 0x33, 1, 0, 0xFF };
-        byte[] func1 = new byte[] { 0x41, 1, 0x41, 0, 0x40, 0, 0x40, 1, 0x10, 0x34 };
+
+        // func1: CALL now transfers args to locals automatically.
+        // Args pushed left-to-right: 10 (arg0), 20 (arg1) -> locals[0]=10, locals[1]=20
+        // Load local 0 (10), Load local 1 (20), Add (30), Ret
+        byte[] func1 = new byte[] { 0x40, 0, 0x40, 1, 0x10, 0x34 };
         byte[] bytecode = CreateTwoFunctions(func0, 0, func1, 2);
         Assert.Equal(30, TutelVm.RunBytes(bytecode));
     }
@@ -185,15 +193,17 @@ public class VmIntegrationTests
     {
         MemoryStream ms = new();
         BinaryWriter bw = new(ms);
-        bw.Write(0x4C42434Du);
-        bw.Write(0x00000001u);
-        bw.Write((ushort)1);
-        bw.Write((ushort)0);
-        bw.Write(0u);
-        bw.Write((ushort)0);
-        bw.Write((ushort)locals);
-        bw.Write((uint)code.Length);
-        bw.Write(code);
+        bw.Write(0x4C42434Du);         // Magic "MBCL" (4 bytes)
+        bw.Write((ushort)1);           // Version (2 bytes)
+        bw.Write((ushort)0);           // Entry point index (2 bytes) - function 0
+        bw.Write((ushort)0);           // Global variable count (2 bytes)
+        bw.Write((ushort)1);           // Function count (2 bytes)
+
+        // Function 0:
+        bw.Write((byte)0);             // Arity (1 byte) - no parameters
+        bw.Write((byte)locals);        // Locals (1 byte)
+        bw.Write((uint)code.Length);   // Code size (4 bytes)
+        bw.Write(code);                // Code
         return ms.ToArray();
     }
 
@@ -201,15 +211,17 @@ public class VmIntegrationTests
     {
         MemoryStream ms = new();
         BinaryWriter bw = new(ms);
-        bw.Write(0x4C42434Du);
-        bw.Write(0x00000001u);
-        bw.Write((ushort)1);
-        bw.Write((ushort)globals);
-        bw.Write(0u);
-        bw.Write((ushort)0);
-        bw.Write((ushort)0);
-        bw.Write((uint)code.Length);
-        bw.Write(code);
+        bw.Write(0x4C42434Du);         // Magic "MBCL" (4 bytes)
+        bw.Write((ushort)1);           // Version (2 bytes)
+        bw.Write((ushort)0);           // Entry point index (2 bytes) - function 0
+        bw.Write((ushort)globals);     // Global variable count (2 bytes)
+        bw.Write((ushort)1);           // Function count (2 bytes)
+
+        // Function 0:
+        bw.Write((byte)0);             // Arity (1 byte) - no parameters
+        bw.Write((byte)0);             // Locals (1 byte)
+        bw.Write((uint)code.Length);   // Code size (4 bytes)
+        bw.Write(code);                // Code
         return ms.ToArray();
     }
 
@@ -217,19 +229,23 @@ public class VmIntegrationTests
     {
         MemoryStream ms = new();
         BinaryWriter bw = new(ms);
-        bw.Write(0x4C42434Du);
-        bw.Write(0x00000001u);
-        bw.Write((ushort)2);
-        bw.Write((ushort)0);
-        bw.Write(0u);
-        bw.Write((ushort)0);
-        bw.Write((ushort)func0Locals);
-        bw.Write((uint)func0Code.Length);
-        bw.Write(func0Code);
-        bw.Write((ushort)1);
-        bw.Write((ushort)func1Locals);
-        bw.Write((uint)func1Code.Length);
-        bw.Write(func1Code);
+        bw.Write(0x4C42434Du);         // Magic "MBCL" (4 bytes)
+        bw.Write((ushort)1);           // Version (2 bytes)
+        bw.Write((ushort)0);           // Entry point index (2 bytes) - function 0
+        bw.Write((ushort)0);           // Global variable count (2 bytes)
+        bw.Write((ushort)2);           // Function count (2 bytes)
+
+        // Function 0:
+        bw.Write((byte)0);             // Arity (1 byte)
+        bw.Write((byte)func0Locals);   // Locals (1 byte)
+        bw.Write((uint)func0Code.Length); // Code size (4 bytes)
+        bw.Write(func0Code);           // Code
+
+        // Function 1:
+        bw.Write((byte)func1Locals);   // Arity (1 byte) - treat func1Locals as arity for arg passing
+        bw.Write((byte)func1Locals);   // Locals (1 byte)
+        bw.Write((uint)func1Code.Length); // Code size (4 bytes)
+        bw.Write(func1Code);           // Code
         return ms.ToArray();
     }
 }

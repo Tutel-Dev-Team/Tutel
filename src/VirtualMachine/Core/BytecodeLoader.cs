@@ -52,33 +52,33 @@ public static class BytecodeLoader
                 $"Invalid bytecode: wrong magic number (expected 0x{BytecodeFormat.MagicNumber:X8}, got 0x{magic:X8})");
         }
 
-        // Read version
-        uint version = ReadUInt32(data, ref offset);
+        // Read version (2 bytes per spec)
+        ushort version = ReadUInt16(data, ref offset);
         if (version != BytecodeFormat.Version)
         {
             throw new InvalidOperationException(
                 $"Unsupported bytecode version: {version} (expected {BytecodeFormat.Version})");
         }
 
-        // Read function count
-        ushort functionCount = ReadUInt16(data, ref offset);
+        // Read entry point index (2 bytes per spec)
+        ushort entryPointIndex = ReadUInt16(data, ref offset);
 
         // Read global variable count
         ushort globalVariableCount = ReadUInt16(data, ref offset);
 
-        // Read entry point index
-        uint entryPointIndex = ReadUInt32(data, ref offset);
+        // Read function count
+        ushort functionCount = ReadUInt16(data, ref offset);
 
         // Read functions
         Dictionary<ushort, FunctionInfo> functions = new();
 
         for (int i = 0; i < functionCount; i++)
         {
-            EnsureBytes(data, offset, 8);
+            EnsureBytes(data, offset, 6); // arity(1) + locals(1) + code_size(4)
 
-            ushort funcIndex = ReadUInt16(data, ref offset);
-            ushort localVarCount = ReadUInt16(data, ref offset);
-            uint bytecodeSize = ReadUInt32(data, ref offset);
+            byte arity = data[offset++];            // 1 byte: number of parameters
+            byte localsCount = data[offset++];      // 1 byte: total local variables (including params)
+            uint bytecodeSize = ReadUInt32(data, ref offset); // 4 bytes
 
             EnsureBytes(data, offset, (int)bytecodeSize);
 
@@ -86,12 +86,13 @@ public static class BytecodeLoader
             Array.Copy(data, offset, bytecode, 0, (int)bytecodeSize);
             offset += (int)bytecodeSize;
 
-            FunctionInfo functionInfo = new(funcIndex, localVarCount, bytecode);
+            ushort funcIndex = (ushort)i;
+            FunctionInfo functionInfo = new(funcIndex, arity, localsCount, bytecode);
             functions[funcIndex] = functionInfo;
         }
 
         // Validate entry point exists
-        if (!functions.ContainsKey((ushort)entryPointIndex))
+        if (!functions.ContainsKey(entryPointIndex))
         {
             throw new InvalidOperationException(
                 $"Invalid bytecode: entry point function {entryPointIndex} not found");
