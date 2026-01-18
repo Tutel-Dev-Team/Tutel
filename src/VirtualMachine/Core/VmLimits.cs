@@ -16,7 +16,7 @@ public static class VmLimits
     /// <summary>
     /// Gets the maximum call stack depth.
     /// </summary>
-    public static int MaxCallStackDepth => 1024;
+    public static int MaxCallStackDepth => 16384;
 
     /// <summary>
     /// Gets the maximum number of local variables per function.

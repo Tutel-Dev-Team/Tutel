@@ -15,17 +15,48 @@ public sealed class ExecutionEngine
     /// Executes the bytecode module from its entry point.
     /// </summary>
     /// <param name="context">The execution context.</param>
+    /// <param name="trace">Enable instruction tracing output.</param>
+    /// <param name="traceLimit">Maximum instructions to trace (0 = unlimited).</param>
     /// <returns>The execution result.</returns>
-    public long Execute(Instructions.ExecutionContext context)
+    public long Execute(Instructions.ExecutionContext context, bool trace = false, int traceLimit = 100)
     {
         ArgumentNullException.ThrowIfNull(context);
 
+        int traceCount = 0;
+        bool traceLimitReached = false;
+
         while (!context.Halted)
         {
+            if (trace && (traceLimit == 0 || traceCount < traceLimit))
+            {
+                TraceInstruction(context, ref traceCount, traceLimit, ref traceLimitReached);
+            }
+
             ExecuteNextInstruction(context);
         }
 
         return context.Result;
+    }
+
+    private static void TraceInstruction(
+        Instructions.ExecutionContext context,
+        ref int traceCount,
+        int traceLimit,
+        ref bool traceLimitReached)
+    {
+        int pc = context.ProgramCounter;
+        Instructions.DecodedInstruction instr = Instructions.InstructionDecoder.Decode(context.Bytecode, pc);
+        int stackSize = context.Memory.OperandStack.Count;
+        ushort funcIdx = context.CurrentFunction.Index;
+
+        Console.Error.WriteLine($"[{traceCount,4}] func={funcIdx} PC={pc,3} {instr.Opcode,-12} stack={stackSize}");
+        traceCount++;
+
+        if (traceLimit > 0 && traceCount >= traceLimit && !traceLimitReached)
+        {
+            Console.Error.WriteLine($"... (trace limit {traceLimit} reached, use --trace=0 for unlimited)");
+            traceLimitReached = true;
+        }
     }
 
     private static void ExecuteNextInstruction(Instructions.ExecutionContext context)

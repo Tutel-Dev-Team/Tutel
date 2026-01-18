@@ -24,6 +24,8 @@ public static class VmLauncher
         }
 
         bool debug = false;
+        bool trace = false;
+        int traceLimit = 100;
         string? filePath = null;
 
         foreach (string arg in args)
@@ -46,6 +48,23 @@ public static class VmLauncher
                 continue;
             }
 
+            if (arg is "--trace" or "-t")
+            {
+                trace = true;
+                continue;
+            }
+
+            if (arg.StartsWith("--trace="))
+            {
+                trace = true;
+                if (int.TryParse(arg.AsSpan(8), out int limit))
+                {
+                    traceLimit = limit;
+                }
+
+                continue;
+            }
+
             filePath = arg;
         }
 
@@ -55,16 +74,16 @@ public static class VmLauncher
             return 1;
         }
 
-        return RunFile(filePath, debug);
+        return RunFile(filePath, debug, trace, traceLimit);
     }
 
-    private static int RunFile(string filePath, bool debug = false)
+    private static int RunFile(string filePath, bool debug = false, bool trace = false, int traceLimit = 100)
     {
         try
         {
             var vm = new TutelVm();
             vm.Load(filePath);
-            long result = vm.Run();
+            long result = vm.Run(trace, traceLimit);
 
             Console.WriteLine(result);
 
@@ -118,14 +137,14 @@ public static class VmLauncher
     {
         Console.WriteLine("Tutel Virtual Machine");
         Console.WriteLine();
-        Console.WriteLine("Usage: tutel <file.tbc>");
-        Console.WriteLine("       tutel --help");
-        Console.WriteLine("       tutel --version");
+        Console.WriteLine("Usage: tutel <file.tbc> [options]");
         Console.WriteLine();
-        Console.WriteLine("Arguments:");
-        Console.WriteLine("  <file.tbc>    Path to bytecode file to execute");
-        Console.WriteLine("  --help, -h    Show this help message");
-        Console.WriteLine("  --version, -v Show version information");
+        Console.WriteLine("Options:");
+        Console.WriteLine("  --help, -h       Show this help message");
+        Console.WriteLine("  --version, -v    Show version information");
+        Console.WriteLine("  --debug, -d      Show heap arrays after execution");
+        Console.WriteLine("  --trace, -t      Trace instruction execution (100 max)");
+        Console.WriteLine("  --trace=N        Trace N instructions (0 = unlimited)");
     }
 
     private static void PrintVersion()

@@ -65,9 +65,11 @@ public sealed class TutelVm
     /// <summary>
     /// Runs the loaded bytecode module.
     /// </summary>
+    /// <param name="trace">Enable instruction tracing output.</param>
+    /// <param name="traceLimit">Maximum number of instructions to trace (0 = unlimited).</param>
     /// <returns>The execution result.</returns>
     /// <exception cref="System.InvalidOperationException">Thrown when no module is loaded.</exception>
-    public long Run()
+    public long Run(bool trace = false, int traceLimit = 100)
     {
         if (_module == null || _memory == null)
         {
@@ -89,7 +91,7 @@ public sealed class TutelVm
 
         // Run the execution engine
         ExecutionEngine engine = new();
-        return engine.Execute(context);
+        return engine.Execute(context, trace, traceLimit);
     }
 
     /// <summary>
