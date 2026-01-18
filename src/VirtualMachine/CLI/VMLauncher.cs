@@ -83,13 +83,17 @@ public static class VmLauncher
         {
             var vm = new TutelVm();
             vm.Load(filePath);
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             long result = vm.Run(trace, traceLimit);
+            sw.Stop();
 
             Console.WriteLine(result);
 
             if (debug)
             {
                 PrintHeapArrays(vm);
+                PrintExecutionStats(sw.Elapsed);
             }
 
             return 0;
@@ -113,6 +117,20 @@ public static class VmLauncher
         {
             Console.Error.WriteLine($"Runtime error: {ex.Message}");
             return 1;
+        }
+    }
+
+    private static void PrintExecutionStats(TimeSpan elapsed)
+    {
+        Console.WriteLine();
+        Console.WriteLine("=== Debug: Execution Stats ===");
+        if (elapsed.TotalSeconds >= 1)
+        {
+            Console.WriteLine($"Time: {elapsed.TotalSeconds:F3} s");
+        }
+        else
+        {
+            Console.WriteLine($"Time: {elapsed.TotalMilliseconds:F2} ms");
         }
     }
 
