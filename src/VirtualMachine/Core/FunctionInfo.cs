@@ -12,12 +12,14 @@ public sealed class FunctionInfo
     /// Initializes a new instance of the <see cref="FunctionInfo"/> class.
     /// </summary>
     /// <param name="index">Function index.</param>
-    /// <param name="localVariableCount">Number of local variables.</param>
+    /// <param name="arity">Number of parameters.</param>
+    /// <param name="localVariableCount">Number of local variables (including parameters).</param>
     /// <param name="bytecode">The function bytecode.</param>
-    public FunctionInfo(ushort index, ushort localVariableCount, byte[] bytecode)
+    public FunctionInfo(ushort index, byte arity, ushort localVariableCount, byte[] bytecode)
     {
         ArgumentNullException.ThrowIfNull(bytecode);
         Index = index;
+        Arity = arity;
         LocalVariableCount = localVariableCount;
         Bytecode = bytecode;
     }
@@ -26,6 +28,11 @@ public sealed class FunctionInfo
     /// Gets the function index.
     /// </summary>
     public ushort Index { get; }
+
+    /// <summary>
+    /// Gets the number of parameters (arity).
+    /// </summary>
+    public byte Arity { get; }
 
     /// <summary>
     /// Gets the number of local variables.

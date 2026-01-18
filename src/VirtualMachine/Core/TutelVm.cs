@@ -91,4 +91,18 @@ public sealed class TutelVm
         ExecutionEngine engine = new();
         return engine.Execute(context);
     }
+
+    /// <summary>
+    /// Gets all arrays currently on the heap for debugging.
+    /// </summary>
+    /// <returns>Dictionary of array handle to array contents.</returns>
+    public Dictionary<long, long[]> GetHeapArrays()
+    {
+        if (_memory == null)
+        {
+            return new Dictionary<long, long[]>();
+        }
+
+        return _memory.GC.GetAllArrays();
+    }
 }

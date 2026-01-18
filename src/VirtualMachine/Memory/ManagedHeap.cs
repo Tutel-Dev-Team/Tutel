@@ -143,6 +143,26 @@ public sealed class ManagedHeap : IGarbageCollector
     }
 
     /// <summary>
+    /// Gets all allocated arrays for debugging purposes.
+    /// </summary>
+    /// <returns>Dictionary mapping handle to array contents.</returns>
+    public Dictionary<long, long[]> GetAllArrays()
+    {
+        var result = new Dictionary<long, long[]>();
+        for (int i = 0; i < _arrays.Count; i++)
+        {
+            long[]? arr = _arrays[i];
+            if (arr != null)
+            {
+                long taggedHandle = Value.TagAsArray(i);
+                result[taggedHandle] = arr;
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Runs garbage collection using mark-and-sweep algorithm.
     /// </summary>
     /// <param name="memory">The memory manager providing root references.</param>

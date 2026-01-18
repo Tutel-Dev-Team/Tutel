@@ -23,25 +23,42 @@ public static class VmLauncher
             return 1;
         }
 
-        string command = args[0];
+        bool debug = false;
+        string? filePath = null;
 
-        if (command is "--help" or "-h")
+        foreach (string arg in args)
+        {
+            if (arg is "--help" or "-h")
+            {
+                PrintUsage();
+                return 0;
+            }
+
+            if (arg is "--version" or "-v")
+            {
+                PrintVersion();
+                return 0;
+            }
+
+            if (arg is "--debug" or "-d")
+            {
+                debug = true;
+                continue;
+            }
+
+            filePath = arg;
+        }
+
+        if (filePath == null)
         {
             PrintUsage();
-            return 0;
+            return 1;
         }
 
-        if (command is "--version" or "-v")
-        {
-            PrintVersion();
-            return 0;
-        }
-
-        // Treat the argument as a file path
-        return RunFile(command);
+        return RunFile(filePath, debug);
     }
 
-    private static int RunFile(string filePath)
+    private static int RunFile(string filePath, bool debug = false)
     {
         try
         {
@@ -50,6 +67,12 @@ public static class VmLauncher
             long result = vm.Run();
 
             Console.WriteLine(result);
+
+            if (debug)
+            {
+                PrintHeapArrays(vm);
+            }
+
             return 0;
         }
         catch (FileNotFoundException ex)
@@ -71,6 +94,23 @@ public static class VmLauncher
         {
             Console.Error.WriteLine($"Runtime error: {ex.Message}");
             return 1;
+        }
+    }
+
+    private static void PrintHeapArrays(TutelVm vm)
+    {
+        Console.WriteLine();
+        Console.WriteLine("=== Debug: Heap Arrays ===");
+        Dictionary<long, long[]> arrays = vm.GetHeapArrays();
+        if (arrays.Count == 0)
+        {
+            Console.WriteLine("(no arrays)");
+            return;
+        }
+
+        foreach (KeyValuePair<long, long[]> kvp in arrays)
+        {
+            Console.WriteLine($"Array @{kvp.Key}: [{string.Join(", ", kvp.Value)}]");
         }
     }
 
