@@ -130,7 +130,6 @@ public sealed class TutelVm
                 $"ticks={fn.JitTotalTicks}, " +
                 $"time={seconds}s");
         }
-        return result;
     }
 
     /// <summary>
