@@ -1,5 +1,4 @@
 using Tutel.VirtualMachine.Core;
-using Tutel.VirtualMachine.Instructions.Handlers;
 using Tutel.VirtualMachine.Memory;
 using ExecutionContext = Tutel.VirtualMachine.Instructions.ExecutionContext;
 
@@ -52,9 +51,14 @@ internal sealed class JitCompiler
                 throw new InvalidOperationException($"JMP target not parsed: bytePc={bytePc}");
             return instr;
         }
+
+        public bool TryMapBytePcToInstrIndex(int bytePc, out int instrIndex)
+        {
+            return _bytePcToInstr.TryGetValue(bytePc, out instrIndex);
+        }
     }
 
-    internal delegate void JitEntryPoint(ExecutionContext context);
+    internal delegate long JitEntryPoint(ExecutionContext context);
 
     internal enum JitOp
     {
@@ -101,13 +105,15 @@ internal sealed class JitCompiler
 
         public long Operand { get; }
 
-        public int Target { get; }
+        public int TargetInstr { get; set; } = -1;
 
-        public JitInstruction(JitOp op, long operand = 0, int target = -1)
+        public int? TargetBytePc { get; }
+
+        public JitInstruction(JitOp op, long operand = 0, int? targetBytePc = null)
         {
             Op = op;
             Operand = operand;
-            Target = target;
+            TargetBytePc = targetBytePc;
         }
 
         public override string ToString()
@@ -119,9 +125,9 @@ internal sealed class JitCompiler
                 JitOp.StoreLocal => $"StoreLocal({Operand})",
                 JitOp.LoadGlobal => $"LoadGlobal({Operand})",
                 JitOp.StoreGlobal => $"StoreGlobal({Operand})",
-                JitOp.Jmp => $"Jmp({Target})",
-                JitOp.Jz => $"Jz({Target})",
-                JitOp.Jnz => $"Jnz({Target})",
+                JitOp.Jmp => $"Jmp({TargetInstr})",
+                JitOp.Jz => $"Jz({TargetInstr})",
+                JitOp.Jnz => $"Jnz({TargetInstr})",
                 JitOp.Nop => Op.ToString(),
                 JitOp.Pop => Op.ToString(),
                 JitOp.Dup => Op.ToString(),
@@ -138,7 +144,7 @@ internal sealed class JitCompiler
                 JitOp.CmpGt => Op.ToString(),
                 JitOp.CmpGe => Op.ToString(),
                 JitOp.Ret => Op.ToString(),
-                JitOp.Call => Op.ToString(),
+                JitOp.Call => $"Call({Operand})",
                 _ => Op.ToString(),
             };
         }
@@ -179,7 +185,7 @@ internal sealed class JitCompiler
             JitOp op = instructions[i].Op;
             if (op is JitOp.Jmp or JitOp.Jz or JitOp.Jnz)
             {
-                if (instructions[i].Target >= 0 && instructions[i].Target < i)
+                if (instructions[i].TargetInstr >= 0 && instructions[i].TargetInstr < i)
                     return true;
             }
         }
@@ -204,12 +210,6 @@ internal sealed class JitCompiler
 
             var opcode = (Opcode)ctx.Code[ctx.Pc++];
 
-            if (opcode == Opcode.Ret)
-            {
-                instructions.Add(new JitInstruction(JitOp.Ret));
-                return true;
-            }
-
             if (!opcodeHandlers.TryGetValue(opcode, out Action? handler))
                 return false;
 
@@ -221,6 +221,22 @@ internal sealed class JitCompiler
             {
                 throw new InvalidOperationException($"JIT parser PC out of range after {opcode} at {instrStartPc}");
             }
+        }
+
+        for (int i = 0; i < instructions.Count; i++)
+        {
+            JitInstruction inst = instructions[i];
+
+            if (inst.TargetBytePc is null)
+                continue;
+
+            if (!ctx.TryMapBytePcToInstrIndex(inst.TargetBytePc.Value, out int targetInstr))
+            {
+                throw new InvalidOperationException(
+                    $"JMP target not parsed: bytePc={inst.TargetBytePc.Value}");
+            }
+
+            inst.TargetInstr = targetInstr;
         }
 
         return true;
@@ -239,7 +255,7 @@ internal sealed class JitCompiler
                 long value = BitConverter.ToInt64(ctx.Code, ctx.Pc);
                 instructions.Add(new JitInstruction(JitOp.PushConst, value));
             },
-
+            [Opcode.Ret] = () => instructions.Add(new JitInstruction(JitOp.Ret)),
             [Opcode.Pop] = () => instructions.Add(new JitInstruction(JitOp.Pop, 0)),
             [Opcode.Dup] = () => instructions.Add(new JitInstruction(JitOp.Dup, 0)),
 
@@ -279,30 +295,38 @@ internal sealed class JitCompiler
             [Opcode.Jmp] = () =>
             {
                 int offset = BitConverter.ToInt32(ctx.Code, ctx.Pc);
-                int instrSize = OpcodeInfo.GetInstructionSize(Opcode.Jmp);
-                int nextInstrPc = ctx.CurrentInstrStartPc + instrSize;
-                int targetBytePc = nextInstrPc + offset;
-                int targetInstr = ctx.MapBytePcToInstrIndex(targetBytePc);
-                instructions.Add(new JitInstruction(JitOp.Jmp, target: targetInstr));
+
+                int instrStartPc = ctx.CurrentInstrStartPc;
+                int targetBytePc = instrStartPc + offset;
+
+                instructions.Add(
+                    new JitInstruction(
+                        JitOp.Jmp,
+                        targetBytePc: targetBytePc));
             },
             [Opcode.Jz] = () =>
             {
                 int offset = BitConverter.ToInt32(ctx.Code, ctx.Pc);
-                int instrSize = OpcodeInfo.GetInstructionSize(Opcode.Jz);
-                int nextInstrPc = ctx.CurrentInstrStartPc + instrSize;
-                int targetBytePc = nextInstrPc + offset;
-                int targetInstr = ctx.MapBytePcToInstrIndex(targetBytePc);
-                instructions.Add(new JitInstruction(JitOp.Jz, target: targetInstr));
-            },
 
+                int instrStartPc = ctx.CurrentInstrStartPc;
+                int targetBytePc = instrStartPc + offset;
+
+                instructions.Add(
+                    new JitInstruction(
+                        JitOp.Jz,
+                        targetBytePc: targetBytePc));
+            },
             [Opcode.Jnz] = () =>
             {
                 int offset = BitConverter.ToInt32(ctx.Code, ctx.Pc);
-                int instrSize = OpcodeInfo.GetInstructionSize(Opcode.Jnz);
-                int nextInstrPc = ctx.CurrentInstrStartPc + instrSize;
-                int targetBytePc = nextInstrPc + offset;
-                int targetInstr = ctx.MapBytePcToInstrIndex(targetBytePc);
-                instructions.Add(new JitInstruction(JitOp.Jnz, target: targetInstr));
+
+                int instrStartPc = ctx.CurrentInstrStartPc;
+                int targetBytePc = instrStartPc + offset;
+
+                instructions.Add(
+                    new JitInstruction(
+                        JitOp.Jnz,
+                        targetBytePc: targetBytePc));
             },
             [Opcode.Call] = () =>
             {
@@ -311,7 +335,7 @@ internal sealed class JitCompiler
                 int instrSize = OpcodeInfo.GetInstructionSize(Opcode.Call);
                 int returnBytePc = ctx.CurrentInstrStartPc + instrSize;
 
-                instructions.Add(new JitInstruction(JitOp.Call, operand: funcIndex, target: returnBytePc));
+                instructions.Add(new JitInstruction(JitOp.Call, operand: funcIndex, targetBytePc: returnBytePc));
             },
         };
     }
@@ -329,7 +353,7 @@ internal sealed class JitCompiler
             ushort calleeIndex = (ushort)inst.Operand;
             FunctionInfo callee = _resolver.GetFunction(calleeIndex);
 
-            if (!TryGetInlineBody(callee, out List<JitInstruction>? body))
+            if (!TryGetInlineBody(callee, out List<JitInstruction> body))
                 continue;
 
             // replace CALL with body (without RET)
@@ -446,12 +470,6 @@ internal sealed class JitCompiler
             }
 
             return _stack.Pop();
-        }
-
-        public long Peek()
-        {
-            if (_cached > 0) return _t0;
-            return _stack.Peek();
         }
 
         public void Dup()
@@ -591,7 +609,7 @@ internal sealed class JitCompiler
                 switch (instr.Op)
                 {
                     case JitOp.Jmp:
-                        pc = instr.Target;
+                        pc = instr.TargetInstr;
                         continue;
 
                     case JitOp.Jz:
@@ -599,7 +617,7 @@ internal sealed class JitCompiler
                         long cond = fs.Pop();
                         if (cond == 0)
                         {
-                            pc = instr.Target;
+                            pc = instr.TargetInstr;
                             continue;
                         }
 
@@ -612,7 +630,7 @@ internal sealed class JitCompiler
                         long cond = fs.Pop();
                         if (cond != 0)
                         {
-                            pc = instr.Target;
+                            pc = instr.TargetInstr;
                             continue;
                         }
 
@@ -620,10 +638,67 @@ internal sealed class JitCompiler
                         break;
                     }
 
-                    case JitOp.Ret:
+                    case JitOp.Call:
+                    {
                         fs.Flush();
-                        ControlFlow.Ret(ctx, default);
-                        return;
+
+                        ushort calleeIndex = (ushort)instr.Operand;
+                        FunctionInfo callee = ctx.GetFunction(calleeIndex);
+
+                        callee.CallCount++;
+                        ctx.Jit.EnsureCompiled(callee, ctx);
+
+                        long ret;
+
+                        if (callee.NativeDelegate is JitEntryPoint ep)
+                        {
+                            ret = ep(ctx);
+                        }
+                        else
+                        {
+                            int returnAddress = ctx.ProgramCounter;
+
+                            ctx.Memory.CallStack.PushFrame(
+                                ctx.CurrentFunction.Index,
+                                returnAddress,
+                                callee.LocalVariableCount);
+
+                            ctx.SwitchToFunction(calleeIndex);
+                            ctx.ProgramCounter = 0;
+
+                            ctx.Jit.TryExecute(callee, ctx);
+                            ret = ctx.Result;
+                        }
+
+                        fs.Push(ret);
+                        pc++;
+                        continue;
+                    }
+
+                    case JitOp.Ret:
+                    {
+                        long returnValue = fs.Pop();
+                        fs.Flush();
+
+                        CallStack callStack = ctx.Memory.CallStack;
+                        OperandStack stack = ctx.Memory.OperandStack;
+
+                        if (callStack.IsEmpty)
+                        {
+                            ctx.Result = returnValue;
+                            ctx.Halted = true;
+                            stack.Push(returnValue);
+                            return returnValue;
+                        }
+
+                        StackFrame frame = callStack.PopFrame();
+
+                        ctx.SwitchToFunction(frame.FunctionIndex);
+                        ctx.ProgramCounter = frame.ReturnAddress;
+
+                        stack.Push(returnValue);
+                        return returnValue;
+                    }
 
                     default:
                         ExecuteInstruction(ref fs, ctx, instr);
