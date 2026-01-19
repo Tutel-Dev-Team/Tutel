@@ -5,7 +5,7 @@ namespace Tutel.VirtualMachine.Jit;
 
 public sealed class JitRuntime : IJitRuntime, JitCompiler.IFunctionResolver
 {
-    public int HotThreshold { get; } = 1;
+    public int HotThreshold { get; } = 10;
 
     private readonly JitCompiler _compiler;
 
