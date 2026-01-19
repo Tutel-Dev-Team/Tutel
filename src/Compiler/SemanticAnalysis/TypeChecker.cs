@@ -58,7 +58,6 @@ public class TypeChecker : IAstVisitor<TypeNode>
 
         if (variable == null)
         {
-            AddError($"Идентификатор '{expr.Name}' не найден", expr.Line);
             return new ErrorType();
         }
 
@@ -129,7 +128,6 @@ public class TypeChecker : IAstVisitor<TypeNode>
 
         if (expr.Arguments.Count != func.Parameters.Count)
         {
-            AddError($"Функция '{expr.FunctionName}' ожидает {func.Parameters.Count} аргументов, получено {expr.Arguments.Count}", expr.Line);
             return new ErrorType();
         }
 

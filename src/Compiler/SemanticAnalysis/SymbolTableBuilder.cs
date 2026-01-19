@@ -201,21 +201,11 @@ public class SymbolTableBuilder : IAstVisitor<object?>
 
     public object? Visit(BreakStatement stmt)
     {
-        if (!_inLoop)
-        {
-            AddError("Оператор 'break' вне цикла", stmt.Line);
-        }
-
         return null;
     }
 
     public object? Visit(ContinueStatement stmt)
     {
-        if (!_inLoop)
-        {
-            AddError("Оператор 'continue' вне цикла", stmt.Line);
-        }
-
         return null;
     }
 
