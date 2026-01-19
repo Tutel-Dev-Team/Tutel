@@ -98,6 +98,12 @@ public enum Opcode : byte
     /// <summary>Get array length. Pop handle, push length.</summary>
     ArrayLen = 0x63,
 
+    /// <summary>Print integer to stdout. Pop value, print it.</summary>
+    PrintInt = 0x56,
+
+    /// <summary>Read integer from stdin. Push the read value.</summary>
+    ReadInt = 0x57,
+
     /// <summary>Halt execution. Return top of stack as result.</summary>
     Halt = 0xFF,
 }

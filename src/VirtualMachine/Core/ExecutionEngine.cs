@@ -172,6 +172,14 @@ public sealed class ExecutionEngine
                 ArrayOps.ArrayLen(context, in instruction);
                 return false;
 
+            // I/O operations
+            case Opcode.PrintInt:
+                IoOps.PrintInt(context, in instruction);
+                return false;
+            case Opcode.ReadInt:
+                IoOps.ReadInt(context, in instruction);
+                return false;
+
             // Misc
             case Opcode.Nop:
                 MiscOps.Nop(context, in instruction);

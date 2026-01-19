@@ -50,6 +50,8 @@ public static class InstructionDecoder
             Opcode.ArrayLoad or
             Opcode.ArrayStore or
             Opcode.ArrayLen or
+            Opcode.PrintInt or
+            Opcode.ReadInt or
             Opcode.Halt
                 => new DecodedInstruction(opcode, 1),
 

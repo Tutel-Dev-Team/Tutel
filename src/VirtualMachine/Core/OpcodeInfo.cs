@@ -38,6 +38,8 @@ public static class OpcodeInfo
             Opcode.ArrayLoad => 1,
             Opcode.ArrayStore => 1,
             Opcode.ArrayLen => 1,
+            Opcode.PrintInt => 1,
+            Opcode.ReadInt => 1,
             Opcode.Halt => 1,
 
             // 2-byte instructions (opcode + uint8)
