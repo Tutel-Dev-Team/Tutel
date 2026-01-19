@@ -63,6 +63,12 @@ public interface IGarbageCollector
     void Clear();
 
     /// <summary>
+    /// Gets all allocated arrays for debugging purposes.
+    /// </summary>
+    /// <returns>Dictionary mapping handle to array contents.</returns>
+    Dictionary<long, long[]> GetAllArrays();
+
+    /// <summary>
     /// Gets the number of allocated (alive) arrays.
     /// </summary>
     int ArrayCount { get; }

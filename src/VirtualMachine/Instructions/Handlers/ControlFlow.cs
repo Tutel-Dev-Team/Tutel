@@ -20,8 +20,8 @@ public static class ControlFlow
     /// <returns>True if PC was modified (jump taken).</returns>
     public static bool Jmp(ExecutionContext context, in DecodedInstruction instruction)
     {
-        // Offset is relative to the start of the instruction
-        context.ProgramCounter += instruction.Int32Arg;
+        // Offset is relative to the NEXT instruction (per spec)
+        context.ProgramCounter += instruction.Size + instruction.Int32Arg;
         return true; // Indicate PC was modified
     }
 
@@ -36,8 +36,8 @@ public static class ControlFlow
         long value = context.Memory.OperandStack.Pop();
         if (value == 0)
         {
-            // Jump relative to start of instruction
-            context.ProgramCounter += instruction.Int32Arg;
+            // Offset is relative to the NEXT instruction (per spec)
+            context.ProgramCounter += instruction.Size + instruction.Int32Arg;
             return true;
         }
 
@@ -55,8 +55,8 @@ public static class ControlFlow
         long value = context.Memory.OperandStack.Pop();
         if (value != 0)
         {
-            // Jump relative to start of instruction
-            context.ProgramCounter += instruction.Int32Arg;
+            // Offset is relative to the NEXT instruction (per spec)
+            context.ProgramCounter += instruction.Size + instruction.Int32Arg;
             return true;
         }
 
@@ -80,6 +80,14 @@ public static class ControlFlow
         {
             context.Jit.EnsureCompiled(targetFunc, context);
         }
+      
+        // Pop arguments from operand stack (in reverse order, so they end up in correct local slots)
+        int arity = targetFunc.Arity;
+        long[] args = new long[arity];
+        for (int i = arity - 1; i >= 0; i--)
+        {
+            args[i] = context.Memory.OperandStack.Pop();
+        }
 
         // Calculate return address (after this CALL instruction)
         int returnAddress = context.ProgramCounter + instruction.Size;
@@ -89,6 +97,12 @@ public static class ControlFlow
             context.CurrentFunction.Index,
             returnAddress,
             targetFunc.LocalVariableCount);
+
+        // Copy arguments into local variables (parameters are the first locals)
+        for (int i = 0; i < arity; i++)
+        {
+            context.Memory.SetLocal((byte)i, args[i]);
+        }
 
         // Switch to target function (sets PC to 0)
         context.SwitchToFunction(funcIndex);
@@ -128,6 +142,15 @@ public static class ControlFlow
 
         // Pop the current frame to get return info
         StackFrame frame = callStack.PopFrame();
+
+        // Check if returning from entry point (sentinel return address)
+        if (frame.ReturnAddress == -1)
+        {
+            // Returning from main - halt with return value as result
+            context.Result = returnValue;
+            context.Halted = true;
+            return true;
+        }
 
         // Restore the calling function
         context.SwitchToFunction(frame.FunctionIndex);
