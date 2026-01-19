@@ -79,10 +79,6 @@ public static class ControlFlow
         if (targetFunc.CallCount >= context.Jit.HotThreshold)
         {
             context.Jit.EnsureCompiled(targetFunc, context);
-            if (context.Jit.TryExecute(targetFunc, context))
-            {
-                return true;
-            }
         }
 
         // Calculate return address (after this CALL instruction)
@@ -97,6 +93,11 @@ public static class ControlFlow
         // Switch to target function (sets PC to 0)
         context.SwitchToFunction(funcIndex);
         context.ProgramCounter = 0;
+
+        if (context.Jit.TryExecute(targetFunc, context))
+        {
+            return true;
+        }
 
         return true; // PC is modified (set to 0 in new function)
     }
