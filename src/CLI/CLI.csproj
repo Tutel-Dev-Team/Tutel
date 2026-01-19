@@ -5,4 +5,8 @@
         <RootNamespace>Tutel.CLI</RootNamespace>
     </PropertyGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Compiler\Compiler.csproj" />
+    </ItemGroup>
+
 </Project>

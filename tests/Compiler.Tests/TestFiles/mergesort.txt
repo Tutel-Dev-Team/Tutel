@@ -1,0 +1,72 @@
+﻿func int main() {
+    // Тестовый массив
+    int n = 1000000;
+    int[] arr = new int[n];
+    
+    for (int i = 0; i < n; i = i + 1){
+        arr[i] = n - i;
+    }
+    
+    // Вызываем сортировку
+    mergeSort(arr, 0, n - 1);
+    
+    return 0;
+}
+
+// Функция слияния двух отсортированных частей
+func void merge(int[] arr, int left, int mid, int right) {
+    // Создаем временный массив
+    int size = right - left + 1;
+    int[] res = new int[size];
+    
+    int k = 0;
+    int i = left;
+    int j = mid + 1;
+    
+    // Сливаем, пока есть элементы в обеих частях
+    while (i <= mid && j <= right) {
+        if (arr[i] <= arr[j]) {
+            res[k] = arr[i];
+            i = i + 1;
+        } else {
+            res[k] = arr[j];
+            j = j + 1;
+        }
+        k = k + 1;
+    }
+    
+    // Копируем оставшиеся элементы из левой части
+    while (i <= mid) {
+        res[k] = arr[i];
+        i = i + 1;
+        k = k + 1;
+    }
+    
+    // Копируем оставшиеся элементы из правой части
+    while (j <= right) {
+        res[k] = arr[j];
+        j = j + 1;
+        k = k + 1;
+    }
+    
+    // Копируем отсортированные элементы обратно в исходный массив
+    for (int a = 0; a < k; a = a + 1) {
+        arr[left + a] = res[a];
+    }
+}
+
+// Рекурсивная функция сортировки слиянием
+func void mergeSort(int[] arr, int left, int right) {
+    if (left >= right) {
+        return;
+    }
+    
+    int mid = (left + right) / 2;
+    
+    // Рекурсивно сортируем левую и правую части
+    mergeSort(arr, left, mid);
+    mergeSort(arr, mid + 1, right);
+    
+    // Сливаем отсортированные части
+    merge(arr, left, mid, right);
+}

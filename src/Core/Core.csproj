@@ -4,4 +4,8 @@
         <RootNamespace>Tutel.Core</RootNamespace>
     </PropertyGroup>
 
+    <ItemGroup>
+      <Folder Include="Compiler\" />
+    </ItemGroup>
+
 </Project>
