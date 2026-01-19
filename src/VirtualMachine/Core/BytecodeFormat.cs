@@ -16,5 +16,5 @@ public static class BytecodeFormat
     /// <summary>
     /// Gets the current bytecode version.
     /// </summary>
-    public static uint Version => 0x00000001;
+    public static ushort Version => 0x0001;
 }
