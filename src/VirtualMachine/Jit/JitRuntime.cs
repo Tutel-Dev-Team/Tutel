@@ -9,17 +9,12 @@ public sealed class JitRuntime : IJitRuntime, JitCompiler.IFunctionResolver
 
     private readonly JitCompiler _compiler;
 
-    private BytecodeModule _module;
-
-    public void SetModule(BytecodeModule module)
-    {
-        _module = module;
-    }
+    private readonly BytecodeModule _module;
 
     public JitRuntime(BytecodeModule module)
     {
-        _module = module;
         _compiler = new JitCompiler(this);
+        _module = module;
     }
 
     public FunctionInfo GetFunction(ushort index)
