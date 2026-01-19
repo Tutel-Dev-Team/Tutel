@@ -84,4 +84,9 @@ public sealed class BytecodeModule
     {
         return _functions.ContainsKey(index);
     }
+
+    public IEnumerable<FunctionInfo> GetAllFunctions()
+    {
+        return _functions.Values;
+    }
 }

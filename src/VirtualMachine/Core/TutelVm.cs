@@ -1,6 +1,9 @@
 // Copyright (c) Tutel Team. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Diagnostics;
+using Tutel.VirtualMachine.Jit;
+
 namespace Tutel.VirtualMachine.Core;
 
 /// <summary>
@@ -10,6 +13,7 @@ public sealed class TutelVm
 {
     private BytecodeModule? _module;
     private Memory.MemoryManager? _memory;
+    private IJitRuntime? _jit;
 
     /// <summary>
     /// Gets a value indicating whether a module is loaded.
@@ -49,6 +53,8 @@ public sealed class TutelVm
     {
         _module = BytecodeLoader.LoadFromFile(filePath);
         _memory = new Memory.MemoryManager(_module.GlobalVariableCount);
+
+        _jit = new JitRuntime(_module);
     }
 
     /// <summary>
@@ -60,6 +66,8 @@ public sealed class TutelVm
     {
         _module = BytecodeLoader.LoadFromBytes(data);
         _memory = new Memory.MemoryManager(_module.GlobalVariableCount);
+
+        _jit = new JitRuntime(_module);
     }
 
     /// <summary>
@@ -80,18 +88,48 @@ public sealed class TutelVm
         _memory.Reset();
 
         // Create execution context starting at entry point
-        Instructions.ExecutionContext context = new(_module, _memory);
+        Instructions.ExecutionContext context = new(
+            _module,
+            _memory,
+            _jit ?? throw new InvalidOperationException("JIT runtime not initialized"));
 
         // Create initial frame for entry point function
         FunctionInfo entryPoint = _module.GetEntryPoint();
-        _memory.CallStack.PushFrame(
-            entryPoint.Index,
-            returnAddress: -1, // Sentinel: no return from main
-            entryPoint.LocalVariableCount);
+        context.SwitchToFunction(entryPoint.Index);
+        context.ProgramCounter = 0;
+
+        // _memory.CallStack.PushFrame(
+        //     entryPoint.Index,
+        //     returnAddress: -1, // Sentinel: no return from main
+        //     entryPoint.LocalVariableCount);
 
         // Run the execution engine
         ExecutionEngine engine = new();
-        return engine.Execute(context, trace, traceLimit);
+        long result = engine.Execute(context, trace, traceLimit);
+
+#if DEBUG
+        DumpJitStats(_module.GetAllFunctions());
+#endif
+        return result;
+    }
+
+    public void DumpJitStats(IEnumerable<FunctionInfo> functions)
+    {
+        Console.WriteLine("=== JIT statistics ===");
+
+        foreach (FunctionInfo fn in functions)
+        {
+            if (fn.JitCompileCount == 0 && fn.JitExecutionCount == 0)
+                continue;
+
+            double seconds = (double)fn.JitTotalTicks / Stopwatch.Frequency;
+
+            Console.WriteLine(
+                $"fn {fn.Index}: compiled={fn.JitCompileCount}, " +
+                $"executed={fn.JitExecutionCount}, " +
+                $"ticks={fn.JitTotalTicks}, " +
+                $"time={seconds}s");
+        }
     }
 
     /// <summary>

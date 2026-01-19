@@ -74,6 +74,13 @@ public static class ControlFlow
         ushort funcIndex = instruction.UInt16Arg;
         FunctionInfo targetFunc = context.GetFunction(funcIndex);
 
+        targetFunc.CallCount++;
+
+        if (targetFunc.CallCount >= context.Jit.HotThreshold)
+        {
+            context.Jit.EnsureCompiled(targetFunc, context);
+        }
+
         // Pop arguments from operand stack (in reverse order, so they end up in correct local slots)
         int arity = targetFunc.Arity;
         long[] args = new long[arity];
@@ -99,6 +106,12 @@ public static class ControlFlow
 
         // Switch to target function (sets PC to 0)
         context.SwitchToFunction(funcIndex);
+        context.ProgramCounter = 0;
+
+        if (context.Jit.TryExecute(targetFunc, context))
+        {
+            return true;
+        }
 
         return true; // PC is modified (set to 0 in new function)
     }
@@ -118,6 +131,14 @@ public static class ControlFlow
 
         // Pop return value from stack
         long returnValue = stack.Pop();
+
+        if (callStack.IsEmpty)
+        {
+            context.Halted = true;
+            context.Result = returnValue;
+            context.Memory.OperandStack.Push(returnValue);
+            return false;
+        }
 
         // Pop the current frame to get return info
         StackFrame frame = callStack.PopFrame();

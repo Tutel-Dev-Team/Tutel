@@ -25,7 +25,7 @@ public sealed class ExecutionEngine
         int traceCount = 0;
         bool traceLimitReached = false;
 
-        while (!context.Halted)
+        while (!context.Halted && context.ProgramCounter >= 0)
         {
             if (trace && (traceLimit == 0 || traceCount < traceLimit))
             {
