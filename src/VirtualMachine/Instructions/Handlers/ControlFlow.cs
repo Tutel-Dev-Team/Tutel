@@ -80,7 +80,7 @@ public static class ControlFlow
         {
             context.Jit.EnsureCompiled(targetFunc, context);
         }
-      
+
         // Pop arguments from operand stack (in reverse order, so they end up in correct local slots)
         int arity = targetFunc.Arity;
         long[] args = new long[arity];
