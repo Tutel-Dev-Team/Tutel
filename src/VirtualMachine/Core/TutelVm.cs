@@ -98,10 +98,10 @@ public sealed class TutelVm
         context.SwitchToFunction(entryPoint.Index);
         context.ProgramCounter = 0;
 
-        // _memory.CallStack.PushFrame(
-        //     entryPoint.Index,
-        //     returnAddress: -1, // Sentinel: no return from main
-        //     entryPoint.LocalVariableCount);
+        _memory.CallStack.PushFrame(
+            entryPoint.Index,
+            returnAddress: -1, // Sentinel: no return from main
+            entryPoint.LocalVariableCount);
 
         // Run the execution engine
         ExecutionEngine engine = new();
