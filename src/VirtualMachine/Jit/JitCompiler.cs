@@ -188,8 +188,7 @@ internal sealed class JitCompiler
             InlineLeafCalls(instructions);
         }
 
-        bool hasBackwardJump = HasBackwardJump(instructions);
-        entry = BuildEntryPoint(instructions, hasBackwardJump);
+        entry = BuildEntryPoint(instructions);
 
         if (Debug)
         {
@@ -199,21 +198,6 @@ internal sealed class JitCompiler
         }
 
         return true;
-    }
-
-    private static bool HasBackwardJump(List<JitInstruction> instructions)
-    {
-        for (int i = 0; i < instructions.Count; i++)
-        {
-            JitOp op = instructions[i].Op;
-            if (op is JitOp.Jmp or JitOp.Jz or JitOp.Jnz)
-            {
-                if (instructions[i].TargetInstr >= 0 && instructions[i].TargetInstr < i)
-                    return true;
-            }
-        }
-
-        return false;
     }
 
     private static bool TryParseBytecode(FunctionInfo functionInfo, out List<JitInstruction> instructions)
@@ -738,23 +722,15 @@ internal sealed class JitCompiler
         return true;
     }
 
-    private static JitEntryPoint BuildEntryPoint(List<JitInstruction> code, bool hasBackwardJump)
+    private static JitEntryPoint BuildEntryPoint(List<JitInstruction> code)
     {
         return ctx =>
         {
             int pc = 0;
             var fs = new FastStack(ctx.Memory.OperandStack);
-#if DEBUG
-            int steps = 0;
-            int maxSteps = hasBackwardJump ? 50_000_000 : 10_000_000;
-#endif
             while (true)
             {
                 ctx.ProgramCounter = pc;
-#if DEBUG
-                if (++steps > maxSteps)
-                    throw new InvalidOperationException("JIT infinite loop detected");
-#endif
 
                 JitInstruction instr = code[pc];
 
