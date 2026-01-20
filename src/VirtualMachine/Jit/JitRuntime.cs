@@ -24,18 +24,21 @@ public sealed class JitRuntime : IJitRuntime, JitCompiler.IFunctionResolver
 
     public void EnsureCompiled(FunctionInfo functionInfo, ExecutionContext context)
     {
-#if DEBUG
-        Console.WriteLine($"[JIT] EnsureCompiled fn={functionInfo.Index}, nativePtr={functionInfo.NativePtr}");
-#endif
+        if (_compiler.Debug)
+        {
+            Console.WriteLine($"[JIT] EnsureCompiled fn={functionInfo.Index}, nativePtr={functionInfo.NativePtr}");
+        }
 
         if (functionInfo.NativePtr != IntPtr.Zero)
             return;
 
         if (functionInfo.JitFailed)
         {
-#if DEBUG
-            Console.WriteLine($"[JIT] JIT disabled for function {functionInfo.Index}");
-#endif
+            if (_compiler.Debug)
+            {
+                Console.WriteLine($"[JIT] JIT disabled for function {functionInfo.Index}");
+            }
+
             return;
         }
 
@@ -54,10 +57,15 @@ public sealed class JitRuntime : IJitRuntime, JitCompiler.IFunctionResolver
     public bool TryExecute(FunctionInfo functionInfo, ExecutionContext context)
     {
         if (functionInfo.NativeDelegate is not JitCompiler.JitEntryPoint entry)
+        {
             return false;
-#if DEBUG
-        Console.WriteLine($"[JIT] Executing function {functionInfo.Index}");
-#endif
+        }
+
+        if (_compiler.Debug)
+        {
+            Console.WriteLine($"[JIT] Executing function {functionInfo.Index}");
+        }
+
         var sw = System.Diagnostics.Stopwatch.StartNew();
         entry(context);
         sw.Stop();
