@@ -7,6 +7,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Compiler\Compiler.csproj" />
+      <ProjectReference Include="..\VirtualMachine\VirtualMachine.csproj" />
     </ItemGroup>
 
 </Project>

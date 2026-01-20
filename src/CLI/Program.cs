@@ -1,3 +1,6 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿// Copyright (c) Tutel Team. All rights reserved.
+// Licensed under the MIT License.
 
-Console.WriteLine("Hello, World!");
+using Tutel.VirtualMachine.CLI;
+
+return VmLauncher.Run(args);

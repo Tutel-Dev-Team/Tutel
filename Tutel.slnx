@@ -1,13 +1,15 @@
 <Solution>
   <Folder Name="/common/" />
   <Folder Name="/src/">
-    <Project Path="src\CLI\CLI.csproj" Type="Classic C#" />
-    <Project Path="src\Compiler\Compiler.csproj" Type="Classic C#" />
-    <Project Path="src\Core\Core.csproj" Type="Classic C#" />
-    <Project Path="src\Runtime\Runtime.csproj" Type="Classic C#" />
+    <Project Path="src\CLI\CLI.csproj" Type="C#" />
+    <Project Path="src\Compiler\Compiler.csproj" Type="C#" />
+    <Project Path="src\Core\Core.csproj" Type="C#" />
+    <Project Path="src\Runtime\Runtime.csproj" Type="C#" />
+    <Project Path="src\VirtualMachine\VirtualMachine.csproj" Type="C#" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests\Compiler.Tests\Compiler.Tests.csproj" Type="Classic C#" />
-    <Project Path="tests\Runtime.Tests\Runtime.Tests.csproj" Type="Classic C#" />
+    <Project Path="tests/VirtualMachine.Tests/VirtualMachine.Tests.csproj" />
+    <Project Path="tests\Compiler.Tests\Compiler.Tests.csproj" Type="C#" />
+    <Project Path="tests\Runtime.Tests\Runtime.Tests.csproj" Type="C#" />
   </Folder>
 </Solution>
