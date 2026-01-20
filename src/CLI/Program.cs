@@ -1,6 +1,10 @@
-﻿// Copyright (c) Tutel Team. All rights reserved.
-// Licensed under the MIT License.
+﻿using Tutel.CLI.CommandHandlers;
 
-using Tutel.VirtualMachine.CLI;
+var helpHandler = new HelpHandler();
 
-return VmLauncher.Run(args);
+helpHandler
+    .AddNext(new CompileHandler())
+    .AddNext(new RunHandler())
+    .AddNext(new BuildRunHandler());
+
+helpHandler.Handle(args);
