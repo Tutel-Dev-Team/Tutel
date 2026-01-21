@@ -11,6 +11,8 @@ namespace Tutel.VirtualMachine.Core;
 /// </summary>
 public sealed class TutelVm
 {
+    private bool Debug { get; } = false;
+
     private BytecodeModule? _module;
     private Memory.MemoryManager? _memory;
     private IJitRuntime? _jit;
@@ -48,13 +50,16 @@ public sealed class TutelVm
     /// Loads a bytecode module from a file.
     /// </summary>
     /// <param name="filePath">Path to the .tbc file.</param>
+    /// <param name="enableJit">Flag to enable using JIT</param>
     /// <exception cref="System.InvalidOperationException">Thrown when loading fails.</exception>
-    public void Load(string filePath)
+    public void Load(string filePath, bool enableJit = true)
     {
         _module = BytecodeLoader.LoadFromFile(filePath);
         _memory = new Memory.MemoryManager(_module.GlobalVariableCount);
 
-        _jit = new JitRuntime(_module);
+        _jit = enableJit
+            ? new JitRuntime(_module)
+            : new NoJitRuntime();
     }
 
     /// <summary>
@@ -107,9 +112,11 @@ public sealed class TutelVm
         ExecutionEngine engine = new();
         long result = engine.Execute(context, trace, traceLimit);
 
-#if DEBUG
-        DumpJitStats(_module.GetAllFunctions());
-#endif
+        if (Debug)
+        {
+            DumpJitStats(_module.GetAllFunctions());
+        }
+
         return result;
     }
 
