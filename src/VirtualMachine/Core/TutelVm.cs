@@ -51,6 +51,7 @@ public sealed class TutelVm
     /// </summary>
     /// <param name="filePath">Path to the .tbc file.</param>
     /// <param name="enableJit">Flag to enable using JIT</param>
+    /// /// <param name="enableGc">Flag to enable using garbage collector</param>
     /// <exception cref="System.InvalidOperationException">Thrown when loading fails.</exception>
     public void Load(string filePath, bool enableJit = true, bool enableGc = true)
     {
