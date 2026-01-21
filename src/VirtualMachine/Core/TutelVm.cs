@@ -52,7 +52,7 @@ public sealed class TutelVm
     /// <param name="filePath">Path to the .tbc file.</param>
     /// <param name="enableJit">Flag to enable using JIT</param>
     /// <exception cref="System.InvalidOperationException">Thrown when loading fails.</exception>
-    public void Load(string filePath, bool enableJit = true)
+    public void Load(string filePath, bool enableJit = true, bool enableGc = true)
     {
         _module = BytecodeLoader.LoadFromFile(filePath);
         _memory = new Memory.MemoryManager(_module.GlobalVariableCount);

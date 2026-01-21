@@ -29,6 +29,7 @@ public static class VmLauncher
         string? filePath = null;
         bool showStats = false;
         bool enableJit = true;
+        bool enableGc = true;
 
         foreach (string arg in args)
         {
@@ -79,6 +80,12 @@ public static class VmLauncher
                 continue;
             }
 
+            if (arg == "--gc=off")
+            {
+                enableGc = false;
+                continue;
+            }
+
             filePath = arg;
         }
 
@@ -88,7 +95,7 @@ public static class VmLauncher
             return 1;
         }
 
-        return RunFile(filePath, debug, trace, traceLimit, showStats, enableJit);
+        return RunFile(filePath, debug, trace, traceLimit, showStats, enableJit, enableGc);
     }
 
     private static int RunFile(
@@ -97,12 +104,13 @@ public static class VmLauncher
         bool trace = false,
         int traceLimit = 100,
         bool showStats = false,
-        bool enableJit = true)
+        bool enableJit = true,
+        bool enableGc = true)
     {
         try
         {
             var vm = new TutelVm();
-            vm.Load(filePath, enableJit);
+            vm.Load(filePath, enableJit, enableGc);
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
             long result = vm.Run(trace, traceLimit);
@@ -188,7 +196,8 @@ public static class VmLauncher
         Console.WriteLine("  --trace, -t      Trace instruction execution (100 max)");
         Console.WriteLine("  --trace=N        Trace N instructions (0 = unlimited)");
         Console.WriteLine("  --stats          Show statistics after execution");
-        Console.WriteLine("  --jit=on/off     Enables or disables using JIT during program execution");
+        Console.WriteLine("  --jit=off        Disables JIT during program execution");
+        Console.WriteLine("  --gc=off         Disables garbage collector during program execution");
     }
 
     private static void PrintVersion()
