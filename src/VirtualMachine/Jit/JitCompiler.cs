@@ -9,6 +9,8 @@ namespace Tutel.VirtualMachine.Jit;
 /// </summary>
 internal sealed class JitCompiler
 {
+    public bool Debug { get; } = false;
+
     /// <summary>
     /// Optional resolver (for future inlining and CALL support).
     /// You can pass a resolver from JitRuntime when you’re ready.
@@ -89,14 +91,25 @@ internal sealed class JitCompiler
         Jz,
         Jnz,
         Ret,
+        Halt,
 
-        // Memory (NEW)
+        // Memory
         LoadLocal,
         StoreLocal,
         LoadGlobal,
         StoreGlobal,
 
         Call,
+
+        // I/O
+        PrintInt,
+        ReadInt,
+
+        // Arrays
+        ArrayNew,
+        ArrayLoad,
+        ArrayStore,
+        ArrayLen,
     }
 
     internal sealed class JitInstruction
@@ -145,6 +158,13 @@ internal sealed class JitCompiler
                 JitOp.CmpGe => Op.ToString(),
                 JitOp.Ret => Op.ToString(),
                 JitOp.Call => $"Call({Operand})",
+                JitOp.Halt => Op.ToString(),
+                JitOp.PrintInt => Op.ToString(),
+                JitOp.ReadInt => Op.ToString(),
+                JitOp.ArrayNew => Op.ToString(),
+                JitOp.ArrayLoad => Op.ToString(),
+                JitOp.ArrayStore => Op.ToString(),
+                JitOp.ArrayLen => Op.ToString(),
                 _ => Op.ToString(),
             };
         }
@@ -152,9 +172,10 @@ internal sealed class JitCompiler
 
     public bool TryCompile(FunctionInfo functionInfo, out JitEntryPoint? entry)
     {
-#if DEBUG
-        Console.WriteLine($"[JIT] Compiling function {functionInfo.Index}");
-#endif
+        if (Debug)
+        {
+            Console.WriteLine($"[JIT] Compiling function {functionInfo.Index}");
+        }
 
         if (!TryParseBytecode(functionInfo, out List<JitInstruction> instructions))
         {
@@ -167,30 +188,16 @@ internal sealed class JitCompiler
             InlineLeafCalls(instructions);
         }
 
-        bool hasBackwardJump = HasBackwardJump(instructions);
-        entry = BuildEntryPoint(instructions, hasBackwardJump);
+        entry = BuildEntryPoint(instructions);
 
-#if DEBUG
-        Console.WriteLine(
-            $"[JIT] Compiled function {functionInfo.Index} as " +
-            string.Join(", ", instructions));
-#endif
-        return true;
-    }
-
-    private static bool HasBackwardJump(List<JitInstruction> instructions)
-    {
-        for (int i = 0; i < instructions.Count; i++)
+        if (Debug)
         {
-            JitOp op = instructions[i].Op;
-            if (op is JitOp.Jmp or JitOp.Jz or JitOp.Jnz)
-            {
-                if (instructions[i].TargetInstr >= 0 && instructions[i].TargetInstr < i)
-                    return true;
-            }
+            Console.WriteLine(
+                $"[JIT] Compiled function {functionInfo.Index} as " +
+                string.Join(", ", instructions));
         }
 
-        return false;
+        return true;
     }
 
     private static bool TryParseBytecode(FunctionInfo functionInfo, out List<JitInstruction> instructions)
@@ -297,7 +304,8 @@ internal sealed class JitCompiler
                 int offset = BitConverter.ToInt32(ctx.Code, ctx.Pc);
 
                 int instrStartPc = ctx.CurrentInstrStartPc;
-                int targetBytePc = instrStartPc + offset;
+                int nextInstrPc = instrStartPc + OpcodeInfo.GetInstructionSize(Opcode.Jmp);
+                int targetBytePc = nextInstrPc + offset;
 
                 instructions.Add(
                     new JitInstruction(
@@ -309,7 +317,8 @@ internal sealed class JitCompiler
                 int offset = BitConverter.ToInt32(ctx.Code, ctx.Pc);
 
                 int instrStartPc = ctx.CurrentInstrStartPc;
-                int targetBytePc = instrStartPc + offset;
+                int nextInstrPc = instrStartPc + OpcodeInfo.GetInstructionSize(Opcode.Jz);
+                int targetBytePc = nextInstrPc + offset;
 
                 instructions.Add(
                     new JitInstruction(
@@ -321,12 +330,17 @@ internal sealed class JitCompiler
                 int offset = BitConverter.ToInt32(ctx.Code, ctx.Pc);
 
                 int instrStartPc = ctx.CurrentInstrStartPc;
-                int targetBytePc = instrStartPc + offset;
+                int nextInstrPc = instrStartPc + OpcodeInfo.GetInstructionSize(Opcode.Jnz);
+                int targetBytePc = nextInstrPc + offset;
 
                 instructions.Add(
                     new JitInstruction(
                         JitOp.Jnz,
                         targetBytePc: targetBytePc));
+            },
+            [Opcode.Halt] = () =>
+            {
+                instructions.Add(new JitInstruction(JitOp.Halt));
             },
             [Opcode.Call] = () =>
             {
@@ -336,6 +350,30 @@ internal sealed class JitCompiler
                 int returnBytePc = ctx.CurrentInstrStartPc + instrSize;
 
                 instructions.Add(new JitInstruction(JitOp.Call, operand: funcIndex, targetBytePc: returnBytePc));
+            },
+            [Opcode.PrintInt] = () =>
+                instructions.Add(new JitInstruction(JitOp.PrintInt)),
+
+            [Opcode.ReadInt] = () =>
+                instructions.Add(new JitInstruction(JitOp.ReadInt)),
+            [Opcode.ArrayNew] = () =>
+            {
+                instructions.Add(new JitInstruction(JitOp.ArrayNew));
+            },
+
+            [Opcode.ArrayLoad] = () =>
+            {
+                instructions.Add(new JitInstruction(JitOp.ArrayLoad));
+            },
+
+            [Opcode.ArrayStore] = () =>
+            {
+                instructions.Add(new JitInstruction(JitOp.ArrayStore));
+            },
+
+            [Opcode.ArrayLen] = () =>
+            {
+                instructions.Add(new JitInstruction(JitOp.ArrayLen));
             },
         };
     }
@@ -356,11 +394,10 @@ internal sealed class JitCompiler
             if (!TryGetInlineBody(callee, out List<JitInstruction> body))
                 continue;
 
-            // replace CALL with body (without RET)
             instructions.RemoveAt(i);
             instructions.InsertRange(i, body);
 
-            i += body.Count - 1; // skip inserted
+            i += body.Count - 1;
         }
     }
 
@@ -374,11 +411,9 @@ internal sealed class JitCompiler
         if (!TryParseBytecode(callee, out List<JitInstruction> calleeIr))
             return false;
 
-        // must end with Ret
         if (calleeIr.Count == 0 || calleeIr[^1].Op != JitOp.Ret)
             return false;
 
-        // reject control flow / call / locals
         foreach (JitInstruction ins in calleeIr)
         {
             if (ins.Op is JitOp.Jmp or JitOp.Jz or JitOp.Jnz) return false;
@@ -390,7 +425,6 @@ internal sealed class JitCompiler
         if (calleeIr.Count > maxInline)
             return false;
 
-        // remove trailing Ret (callee pushes return value before Ret)
         calleeIr.RemoveAt(calleeIr.Count - 1);
 
         body = calleeIr;
@@ -401,7 +435,6 @@ internal sealed class JitCompiler
     {
         private readonly OperandStack _stack;
 
-        // cache top 2 values (0,1 items possible)
         private int _cached;
         private long _t0; // top
         private long _t1; // second
@@ -446,7 +479,6 @@ internal sealed class JitCompiler
                 return;
             }
 
-            // cached == 2 -> spill bottom
             _stack.Push(_t1);
             _t1 = _t0;
             _t0 = v;
@@ -503,6 +535,12 @@ internal sealed class JitCompiler
             return;
 
         if (TryExecuteMemory(ref fs, ctx, inst))
+            return;
+
+        if (TryExecuteArray(ref fs, ctx, inst))
+            return;
+
+        if (TryExecuteIo(ref fs, ctx, inst))
             return;
 
         if (TryExecuteBinary(ref fs, inst))
@@ -576,6 +614,103 @@ internal sealed class JitCompiler
         }
     }
 
+    private static bool TryExecuteArray(ref FastStack fs, ExecutionContext ctx, JitInstruction inst)
+    {
+        MemoryManager memory = ctx.Memory;
+
+        switch (inst.Op)
+        {
+            case JitOp.ArrayNew:
+            {
+                long size = fs.Pop();
+                fs.Flush();
+
+                if (size < 0)
+                    throw new InvalidOperationException("ArrayNew: negative size");
+
+                long taggedHandle = memory.AllocateArray((int)size);
+                fs.Push(taggedHandle);
+                return true;
+            }
+
+            case JitOp.ArrayLoad:
+            {
+                long index = fs.Pop();
+                long taggedHandle = fs.Pop();
+                fs.Flush();
+
+                if (!Value.IsArray(taggedHandle))
+                    throw new InvalidOperationException("ArrayLoad: value is not an array handle");
+
+                int handle = Value.GetHandle(taggedHandle);
+                long value = memory.GC.GetElement(handle, (int)index);
+                fs.Push(value);
+                return true;
+            }
+
+            case JitOp.ArrayStore:
+            {
+                long value = fs.Pop();
+                long index = fs.Pop();
+                long taggedHandle = fs.Pop();
+                fs.Flush();
+
+                if (!Value.IsArray(taggedHandle))
+                    throw new InvalidOperationException("ArrayStore: value is not an array handle");
+
+                int handle = Value.GetHandle(taggedHandle);
+                memory.GC.SetElement(handle, (int)index, value);
+                return true;
+            }
+
+            case JitOp.ArrayLen:
+            {
+                long taggedHandle = fs.Pop();
+                fs.Flush();
+
+                if (!Value.IsArray(taggedHandle))
+                    throw new InvalidOperationException("ArrayLen: value is not an array handle");
+
+                int handle = Value.GetHandle(taggedHandle);
+                int len = memory.GC.GetArrayLength(handle);
+                fs.Push(len);
+                return true;
+            }
+
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryExecuteIo(ref FastStack fs, ExecutionContext ctx, JitInstruction inst)
+    {
+        switch (inst.Op)
+        {
+            case JitOp.PrintInt:
+            {
+                fs.Flush();
+                long value = fs.Pop();
+                Console.WriteLine(value);
+                return true;
+            }
+
+            case JitOp.ReadInt:
+            {
+                fs.Flush();
+                string? line = Console.ReadLine();
+                if (line == null)
+                    throw new InvalidOperationException("ReadInt: input stream closed");
+
+                long value = long.Parse(line);
+                fs.Push(value);
+                return true;
+            }
+
+            default:
+                return false;
+        }
+    }
+
     private static bool TryExecuteBinary(ref FastStack fs, JitInstruction inst)
     {
         if (!BinaryOps.TryGetValue(inst.Op, out Func<long, long, long>? op))
@@ -587,22 +722,15 @@ internal sealed class JitCompiler
         return true;
     }
 
-    private static JitEntryPoint BuildEntryPoint(List<JitInstruction> code, bool hasBackwardJump)
+    private static JitEntryPoint BuildEntryPoint(List<JitInstruction> code)
     {
         return ctx =>
         {
             int pc = 0;
             var fs = new FastStack(ctx.Memory.OperandStack);
-#if DEBUG
-            int steps = 0;
-            int maxSteps = hasBackwardJump ? 50_000_000 : 10_000_000;
-#endif
             while (true)
             {
-#if DEBUG
-                if (++steps > maxSteps)
-                    throw new InvalidOperationException("JIT infinite loop detected");
-#endif
+                ctx.ProgramCounter = pc;
 
                 JitInstruction instr = code[pc];
 
@@ -638,6 +766,47 @@ internal sealed class JitCompiler
                         break;
                     }
 
+                    case JitOp.Ret:
+                    {
+                        long returnValue = fs.Pop();
+                        fs.Flush();
+
+                        CallStack callStack = ctx.Memory.CallStack;
+                        OperandStack stack = ctx.Memory.OperandStack;
+
+                        StackFrame finishedFrame = callStack.PopFrame();
+
+                        if (callStack.IsEmpty || finishedFrame.ReturnAddress == -1)
+                        {
+                            ctx.Result = returnValue;
+                            ctx.Halted = true;
+                            stack.Push(returnValue);
+                            return returnValue;
+                        }
+
+                        StackFrame callerFrame = callStack.CurrentFrame;
+
+                        ctx.SwitchToFunction(callerFrame.FunctionIndex);
+                        ctx.ProgramCounter = finishedFrame.ReturnAddress;
+
+                        stack.Push(returnValue);
+
+                        ctx.Result = returnValue;
+                        return returnValue;
+                    }
+
+                    case JitOp.Halt:
+                    {
+                        long value = fs.Pop();
+                        fs.Flush();
+
+                        ctx.Result = value;
+                        ctx.Halted = true;
+
+                        ctx.Memory.OperandStack.Push(value);
+                        return value;
+                    }
+
                     case JitOp.Call:
                     {
                         fs.Flush();
@@ -648,56 +817,34 @@ internal sealed class JitCompiler
                         callee.CallCount++;
                         ctx.Jit.EnsureCompiled(callee, ctx);
 
-                        long ret;
+                        int returnBytePc = instr.TargetBytePc
+                                           ?? throw new InvalidOperationException("CALL has no return byte PC");
 
-                        if (callee.NativeDelegate is JitEntryPoint ep)
-                        {
-                            ret = ep(ctx);
-                        }
-                        else
-                        {
-                            int returnAddress = ctx.ProgramCounter;
+                        OperandStack opStack = ctx.Memory.OperandStack;
+                        int arity = callee.Arity;
+                        long[] args = arity == 0 ? Array.Empty<long>() : new long[arity];
 
-                            ctx.Memory.CallStack.PushFrame(
-                                ctx.CurrentFunction.Index,
-                                returnAddress,
-                                callee.LocalVariableCount);
+                        for (int i = arity - 1; i >= 0; i--)
+                            args[i] = opStack.Pop();
 
-                            ctx.SwitchToFunction(calleeIndex);
-                            ctx.ProgramCounter = 0;
+                        ctx.Memory.CallStack.PushFrame(
+                            calleeIndex,
+                            returnAddress: returnBytePc,
+                            localVariableCount: callee.LocalVariableCount);
 
-                            ctx.Jit.TryExecute(callee, ctx);
-                            ret = ctx.Result;
-                        }
+                        StackFrame calleeFrame = ctx.Memory.CallStack.CurrentFrame;
+                        for (int i = 0; i < arity; i++)
+                            calleeFrame.SetLocal((byte)i, args[i]);
 
+                        ctx.SwitchToFunction(calleeIndex);
+                        ctx.ProgramCounter = 0;
+
+                        ctx.Jit.TryExecute(callee, ctx);
+
+                        long ret = ctx.Result;
                         fs.Push(ret);
-                        pc++;
-                        continue;
-                    }
 
-                    case JitOp.Ret:
-                    {
-                        long returnValue = fs.Pop();
-                        fs.Flush();
-
-                        CallStack callStack = ctx.Memory.CallStack;
-                        OperandStack stack = ctx.Memory.OperandStack;
-
-                        if (callStack.IsEmpty)
-                        {
-                            ctx.Result = returnValue;
-                            ctx.Halted = true;
-                            stack.Push(returnValue);
-                            return returnValue;
-                        }
-
-                        StackFrame frame = callStack.PopFrame();
-
-                        ctx.SwitchToFunction(frame.FunctionIndex);
-                        ctx.ProgramCounter = frame.ReturnAddress;
-
-                        stack.Push(returnValue);
-                        return returnValue;
+                        return ret;
                     }
 
                     default:

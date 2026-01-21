@@ -27,6 +27,8 @@ public static class VmLauncher
         bool trace = false;
         int traceLimit = 100;
         string? filePath = null;
+        bool showStats = false;
+        bool enableJit = true;
 
         foreach (string arg in args)
         {
@@ -65,6 +67,18 @@ public static class VmLauncher
                 continue;
             }
 
+            if (arg == "--stats")
+            {
+                showStats = true;
+                continue;
+            }
+
+            if (arg == "--jit=off")
+            {
+                enableJit = false;
+                continue;
+            }
+
             filePath = arg;
         }
 
@@ -74,15 +88,21 @@ public static class VmLauncher
             return 1;
         }
 
-        return RunFile(filePath, debug, trace, traceLimit);
+        return RunFile(filePath, debug, trace, traceLimit, showStats, enableJit);
     }
 
-    private static int RunFile(string filePath, bool debug = false, bool trace = false, int traceLimit = 100)
+    private static int RunFile(
+        string filePath,
+        bool debug = false,
+        bool trace = false,
+        int traceLimit = 100,
+        bool showStats = false,
+        bool enableJit = true)
     {
         try
         {
             var vm = new TutelVm();
-            vm.Load(filePath);
+            vm.Load(filePath, enableJit);
 
             var sw = System.Diagnostics.Stopwatch.StartNew();
             long result = vm.Run(trace, traceLimit);
@@ -93,6 +113,10 @@ public static class VmLauncher
             if (debug)
             {
                 PrintHeapArrays(vm);
+            }
+
+            if (showStats)
+            {
                 PrintExecutionStats(sw.Elapsed);
             }
 
@@ -163,6 +187,8 @@ public static class VmLauncher
         Console.WriteLine("  --debug, -d      Show heap arrays after execution");
         Console.WriteLine("  --trace, -t      Trace instruction execution (100 max)");
         Console.WriteLine("  --trace=N        Trace N instructions (0 = unlimited)");
+        Console.WriteLine("  --stats          Show statistics after execution");
+        Console.WriteLine("  --jit=on/off     Enables or disables using JIT during program execution");
     }
 
     private static void PrintVersion()
