@@ -35,10 +35,9 @@ public class BuildRunHandler : CommandHandlerBase
                 return 0;
             }
 
-            if (arg == "--")
+            if (arg.StartsWith("--"))
             {
                 separatorFound = true;
-                continue;
             }
 
             if (!separatorFound)
