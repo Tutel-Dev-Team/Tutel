@@ -86,11 +86,6 @@ public class SymbolTableBuilder : IAstVisitor<object?>
 
     public object? Visit(ReadExpression expr)
     {
-        if (_currentFunction == null)
-        {
-            AddError("read можно использовать только внутри функции", expr.Line);
-        }
-
         return null;
     }
 

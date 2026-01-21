@@ -27,15 +27,7 @@ public class Parser
 
         while (!_context.IsAtEnd)
         {
-            try
-            {
-                declarations.Add(ParseDeclaration());
-            }
-            catch (ParseException ex)
-            {
-                Console.WriteLine($"Parse Error: {ex.Message}");
-                break;
-            }
+            declarations.Add(ParseDeclaration());
         }
 
         return new ProgramAst()

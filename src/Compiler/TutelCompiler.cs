@@ -6,6 +6,7 @@ using Tutel.Compiler.Parsing;
 using Tutel.Compiler.SemanticAnalysis;
 using Tutel.Core.Compiler.AST;
 using Tutel.Core.Compiler.Bytecode.Models;
+using Tutel.Core.Compiler.Parsing.Exception;
 using Tutel.Core.Compiler.Parsing.Models;
 
 namespace Tutel.Compiler;
@@ -25,14 +26,23 @@ public class TutelCompiler
         var lexer = new Lexer(streamReader, tokenChain);
 
         var parser = new Parser(new ParseContext(lexer.Tokenize().ToList()));
-        ProgramAst program = parser.ParseProgram();
+        ProgramAst program;
+        try
+        {
+            program = parser.ParseProgram();
+        }
+        catch (ParseException ex)
+        {
+            Console.WriteLine($"Parse Error: {ex.Message}");
+            return;
+        }
 
         var analyzer = new SemanticAnalyzer();
         SymbolTable st = analyzer.Analyze(program);
 
         if (st.Errors.Count > 0)
         {
-            Console.WriteLine("Semantic Errors: \n");
+            Console.WriteLine("Semantic Errors:");
             Console.WriteLine(string.Join(Environment.NewLine, st.Errors));
             return;
         }
