@@ -1,0 +1,9 @@
+func int main(){
+    int n = 10000;
+
+    while(1){
+         int[] lst = new int[n];
+    }
+
+    return 0;
+}

@@ -51,11 +51,15 @@ public sealed class TutelVm
     /// </summary>
     /// <param name="filePath">Path to the .tbc file.</param>
     /// <param name="enableJit">Flag to enable using JIT</param>
+    /// <param name="enableGc">Flag to enable garbage collector; when false, используется заглушка без GC.</param>
     /// <exception cref="System.InvalidOperationException">Thrown when loading fails.</exception>
     public void Load(string filePath, bool enableJit = true, bool enableGc = true)
     {
         _module = BytecodeLoader.LoadFromFile(filePath);
-        _memory = new Memory.MemoryManager(_module.GlobalVariableCount);
+        Memory.IGarbageCollector gc = enableGc
+            ? new Memory.ManagedHeap()
+            : new Memory.NoOpGarbageCollector();
+        _memory = new Memory.MemoryManager(_module.GlobalVariableCount, gc);
 
         _jit = enableJit
             ? new JitRuntime(_module)
@@ -66,11 +70,15 @@ public sealed class TutelVm
     /// Loads a bytecode module from a byte array.
     /// </summary>
     /// <param name="data">The bytecode data.</param>
+    /// <param name="enableGc">Flag to enable garbage collector; when false, используется заглушка без GC.</param>
     /// <exception cref="System.InvalidOperationException">Thrown when loading fails.</exception>
-    public void LoadFromBytes(byte[] data)
+    public void LoadFromBytes(byte[] data, bool enableGc = true)
     {
         _module = BytecodeLoader.LoadFromBytes(data);
-        _memory = new Memory.MemoryManager(_module.GlobalVariableCount);
+        Memory.IGarbageCollector gc = enableGc
+            ? new Memory.ManagedHeap()
+            : new Memory.NoOpGarbageCollector();
+        _memory = new Memory.MemoryManager(_module.GlobalVariableCount, gc);
 
         _jit = new JitRuntime(_module);
     }
