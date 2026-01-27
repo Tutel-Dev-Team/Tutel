@@ -39,4 +39,11 @@ public static class StackInstructions
         _ = instruction; // Unused
         context.Memory.OperandStack.DuplicateTop();
     }
+
+    public static void I2D(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        long a = context.Memory.OperandStack.Pop();
+        context.Memory.OperandStack.Push(Memory.Value.FromDouble(a).Raw);
+    }
 }

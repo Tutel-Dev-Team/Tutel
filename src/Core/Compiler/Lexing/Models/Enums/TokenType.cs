@@ -5,6 +5,7 @@ public enum TokenType
     Keyword,
     Identifier,
     IntegerType,
+    DoubleLiteral,
     Delimiter,
     Operator,
     Eof,

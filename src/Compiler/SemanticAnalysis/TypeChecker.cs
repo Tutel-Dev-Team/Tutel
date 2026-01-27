@@ -1,4 +1,4 @@
-﻿using Tutel.Core.Compiler.AST;
+using Tutel.Core.Compiler.AST;
 using Tutel.Core.Compiler.AST.Abstractions;
 using Tutel.Core.Compiler.AST.Declarations;
 using Tutel.Core.Compiler.AST.Expressions;
@@ -44,6 +44,11 @@ public class TypeChecker : IAstVisitor<TypeNode>
         return new IntType();
     }
 
+    public TypeNode Visit(DoubleLiteral expr)
+    {
+        return new DoubleType();
+    }
+
     public TypeNode Visit(IdentifierExpression expr)
     {
         VariableSymbol? variable = null;
@@ -69,21 +74,41 @@ public class TypeChecker : IAstVisitor<TypeNode>
         TypeNode leftType = expr.Left.Accept(this);
         TypeNode rightType = expr.Right.Accept(this);
 
-        if (leftType is not IntType || rightType is not IntType)
+        // Логические операции только для int
+        if (expr.Operator.Value == "&&" || expr.Operator.Value == "||")
         {
-            AddError("Бинарные операции поддерживаются только для типа int", expr.Line);
-            return new ErrorType();
+            if (leftType is not IntType || rightType is not IntType)
+            {
+                AddError("Логические операции поддерживаются только для типа int", expr.Line);
+                return new ErrorType();
+            }
+
+            return new IntType();
         }
 
+        // Арифметические операции: поддерживаем int и double
         if (expr.Operator.Value == "+" ||
             expr.Operator.Value == "-" ||
             expr.Operator.Value == "*" ||
             expr.Operator.Value == "/" ||
-            expr.Operator.Value == $"%")
+            expr.Operator.Value == "%")
         {
+            if (!IsNumeric(leftType) || !IsNumeric(rightType))
+            {
+                AddError("Арифметические операции поддерживаются только для типов int и double", expr.Line);
+                return new ErrorType();
+            }
+
+            // Если хотя бы один операнд double, результат double
+            if (leftType is DoubleType || rightType is DoubleType)
+            {
+                return new DoubleType();
+            }
+
             return new IntType();
         }
 
+        // Операции сравнения: поддерживаем int и double, результат int (0/1)
         if (expr.Operator.Value == "==" ||
             expr.Operator.Value == "!=" ||
             expr.Operator.Value == "<" ||
@@ -91,13 +116,13 @@ public class TypeChecker : IAstVisitor<TypeNode>
             expr.Operator.Value == ">" ||
             expr.Operator.Value == ">=")
         {
-            return new IntType();
-        }
+            if (IsNumeric(leftType) && IsNumeric(rightType))
+            {
+                return new IntType();
+            }
 
-        if (expr.Operator.Value == "&&" ||
-            expr.Operator.Value == "||")
-        {
-            return new IntType();
+            AddError("Операции сравнения поддерживаются только для типов int и double", expr.Line);
+            return new ErrorType();
         }
 
         AddError($"Неподдерживаемый бинарный оператор: {expr.Operator.Type}", expr.Line);
@@ -108,13 +133,13 @@ public class TypeChecker : IAstVisitor<TypeNode>
     {
         TypeNode operandType = expr.Operand.Accept(this);
 
-        if (operandType is not IntType)
+        if (IsNumeric(operandType))
         {
-            AddError("Унарные операции поддерживаются только для типа int", expr.Line);
-            return new ErrorType();
+            return operandType is DoubleType ? new DoubleType() : new IntType();
         }
 
-        return new IntType();
+        AddError("Унарные операции поддерживаются только для типов int и double", expr.Line);
+        return new ErrorType();
     }
 
     public TypeNode Visit(FunctionCallExpression expr)
@@ -122,6 +147,19 @@ public class TypeChecker : IAstVisitor<TypeNode>
         FunctionSymbol? func = _symbols.FindFunction(expr.FunctionName);
         if (func == null)
         {
+            // Встроенная sqrt(x): принимает int/double, возвращает double.
+            if (expr.FunctionName == "sqrt" && expr.Arguments.Count == 1)
+            {
+                TypeNode argType = expr.Arguments[0].Accept(this);
+                if (!IsNumeric(argType))
+                {
+                    AddError("sqrt(x) поддерживается только для типов int и double", expr.Line);
+                    return new ErrorType();
+                }
+
+                return new DoubleType();
+            }
+
             AddError($"Функция '{expr.FunctionName}' не найдена", expr.Line);
             return new ErrorType();
         }
@@ -136,7 +174,7 @@ public class TypeChecker : IAstVisitor<TypeNode>
             TypeNode argType = expr.Arguments[i].Accept(this);
             TypeNode paramType = func.Parameters[i].Type;
 
-            if (!TypesEqual(argType, paramType))
+            if (!CanAssign(paramType, argType))
             {
                 AddError($"Тип аргумента {i + 1} не совпадает: ожидается {paramType}, получено {argType}", expr.Line);
             }
@@ -162,7 +200,8 @@ public class TypeChecker : IAstVisitor<TypeNode>
             return new ErrorType();
         }
 
-        return new IntType();
+        var arrType = (ArrayType)arrayType;
+        return arrType.ElementType;
     }
 
     public TypeNode Visit(ArrayCreationExpression expr)
@@ -186,22 +225,37 @@ public class TypeChecker : IAstVisitor<TypeNode>
         }
 
         TypeNode firstType = expr.Elements[0].Accept(this);
-        if (firstType is not IntType)
+        if (!IsNumeric(firstType))
         {
-            AddError("Элементы массива должны быть типа int", expr.Line);
+            AddError("Элементы массива должны быть типа int или double", expr.Line);
             return new ErrorType();
         }
+
+        bool hasDouble = firstType is DoubleType;
 
         for (int i = 1; i < expr.Elements.Count; i++)
         {
             TypeNode elementType = expr.Elements[i].Accept(this);
-            if (!TypesEqual(elementType, firstType))
+            if (!IsNumeric(elementType))
             {
-                AddError($"Элемент {i} массива имеет несовместимый тип: ожидается int, получено {elementType}", expr.Line);
+                AddError("Элементы массива должны быть типа int или double", expr.Line);
+                return new ErrorType();
+            }
+
+            if (elementType is DoubleType)
+            {
+                hasDouble = true;
+            }
+
+            if (!hasDouble && !TypesEqual(elementType, firstType))
+            {
+                AddError(
+                    $"Элемент {i} массива имеет несовместимый тип: ожидается {firstType}, получено {elementType}",
+                    expr.Line);
             }
         }
 
-        return new ArrayType(new IntType());
+        return new ArrayType(hasDouble ? new DoubleType() : new IntType());
     }
 
     public TypeNode Visit(LengthExpression expr)
@@ -222,34 +276,38 @@ public class TypeChecker : IAstVisitor<TypeNode>
         TypeNode targetType = expr.Target.Accept(this);
         TypeNode valueType = expr.Value.Accept(this);
 
-        if (!TypesEqual(targetType, valueType))
+        if (!CanAssign(targetType, valueType))
         {
-            AddError($"Тип присваиваемого значения не совпадает: ожидается {targetType}, получено {valueType}", expr.Line);
+            AddError(
+                $"Тип присваиваемого значения не совпадает: ожидается {targetType}, получено {valueType}",
+                expr.Line);
             return new ErrorType();
         }
 
-        return valueType;
+        return targetType;
     }
 
     public TypeNode Visit(ArrayAssignmentExpression expr)
     {
-        TypeNode targetType = expr.Target.Accept(this);
+        TypeNode arrayType = expr.Target.Array.Accept(this);
         TypeNode valueType = expr.Value.Accept(this);
 
-        // Проверяем, что присваивание в массив корректно
-        if (targetType is not IntType)
+        if (arrayType is not ArrayType)
         {
-            AddError("Присваивание в массив должно возвращать тип int", expr.Line);
+            AddError("Присваивание поддерживается только для массивов", expr.Line);
             return new ErrorType();
         }
 
-        if (valueType is not IntType)
+        var arrType = (ArrayType)arrayType;
+        if (!CanAssign(arrType.ElementType, valueType))
         {
-            AddError("В массив можно присваивать только значения типа int", expr.Line);
+            AddError(
+                $"Тип присваиваемого значения не совпадает с типом элементов массива: ожидается {arrType.ElementType}, получено {valueType}",
+                expr.Line);
             return new ErrorType();
         }
 
-        return valueType;
+        return arrType.ElementType;
     }
 
     public TypeNode Visit(ReadExpression expr)
@@ -275,9 +333,11 @@ public class TypeChecker : IAstVisitor<TypeNode>
         {
             TypeNode initType = stmt.InitValue.Accept(this);
 
-            if (!TypesEqual(stmt.Type, initType))
+            if (!CanAssign(stmt.Type, initType))
             {
-                AddError($"Тип инициализатора не совпадает с типом переменной: ожидается {stmt.Type}, получено {initType}", stmt.Line);
+                AddError(
+                    $"Тип инициализатора не совпадает с типом переменной: ожидается {stmt.Type}, получено {initType}",
+                    stmt.Line);
             }
         }
 
@@ -344,7 +404,9 @@ public class TypeChecker : IAstVisitor<TypeNode>
 
         if (!TypesEqual(_currentFunction.ReturnType, returnType))
         {
-            AddError($"Тип возвращаемого значения не совпадает: ожидается {_currentFunction.ReturnType}, получено {returnType}", stmt.Line);
+            AddError(
+                $"Тип возвращаемого значения не совпадает: ожидается {_currentFunction.ReturnType}, получено {returnType}",
+                stmt.Line);
         }
 
         return new VoidType();
@@ -372,12 +434,12 @@ public class TypeChecker : IAstVisitor<TypeNode>
         {
             TypeNode exprType = expr.Accept(this);
 
-            if (exprType is IntType)
+            if (exprType is IntType || exprType is DoubleType)
             {
             }
             else if (exprType is ArrayType arrayType)
             {
-                if (arrayType.ElementType is IntType)
+                if (arrayType.ElementType is IntType || arrayType.ElementType is DoubleType)
                 {
                 }
                 else
@@ -409,9 +471,11 @@ public class TypeChecker : IAstVisitor<TypeNode>
         {
             TypeNode initType = decl.InitValue.Accept(this);
 
-            if (!TypesEqual(decl.Type, initType))
+            if (!CanAssign(decl.Type, initType))
             {
-                AddError($"Тип инициализатора глобальной переменной не совпадает: ожидается {decl.Type}, получено {initType}", decl.Line);
+                AddError(
+                    $"Тип инициализатора глобальной переменной не совпадает: ожидается {decl.Type}, получено {initType}",
+                    decl.Line);
             }
         }
 
@@ -419,6 +483,11 @@ public class TypeChecker : IAstVisitor<TypeNode>
     }
 
     public TypeNode Visit(IntType type)
+    {
+        return type;
+    }
+
+    public TypeNode Visit(DoubleType type)
     {
         return type;
     }
@@ -443,12 +512,20 @@ public class TypeChecker : IAstVisitor<TypeNode>
         return new VoidType();
     }
 
+    private static bool IsNumeric(TypeNode type)
+    {
+        return type is IntType or DoubleType;
+    }
+
     private bool TypesEqual(TypeNode? type1, TypeNode? type2)
     {
         if (type1 == null || type2 == null)
             return false;
 
         if (type1 is IntType && type2 is IntType)
+            return true;
+
+        if (type1 is DoubleType && type2 is DoubleType)
             return true;
 
         if (type1 is VoidType && type2 is VoidType)
@@ -459,6 +536,25 @@ public class TypeChecker : IAstVisitor<TypeNode>
 
         if (type1 is ErrorType || type2 is ErrorType)
             return true;
+
+        return false;
+    }
+
+    private bool CanAssign(TypeNode? targetType, TypeNode? valueType)
+    {
+        if (targetType == null || valueType == null)
+            return false;
+
+        if (TypesEqual(targetType, valueType))
+            return true;
+
+        // Разрешаем неявное расширение int -> double.
+        if (targetType is DoubleType && valueType is IntType)
+            return true;
+
+        // Для массивов сохраняем строгую проверку типов элементов.
+        if (targetType is ArrayType targetArr && valueType is ArrayType valueArr)
+            return TypesEqual(targetArr.ElementType, valueArr.ElementType);
 
         return false;
     }

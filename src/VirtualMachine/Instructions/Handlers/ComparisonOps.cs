@@ -1,8 +1,6 @@
 // Copyright (c) Tutel Team. All rights reserved.
 // Licensed under the MIT License.
 
-using Tutel.VirtualMachine.Memory;
-
 namespace Tutel.VirtualMachine.Instructions.Handlers;
 
 /// <summary>
@@ -18,7 +16,7 @@ public static class ComparisonOps
     public static void CmpEq(ExecutionContext context, in DecodedInstruction instruction)
     {
         _ = instruction; // Unused
-        OperandStack stack = context.Memory.OperandStack;
+        Memory.OperandStack stack = context.Memory.OperandStack;
         long b = stack.Pop();
         long a = stack.Pop();
         stack.Push(a == b ? 1L : 0L);
@@ -32,7 +30,7 @@ public static class ComparisonOps
     public static void CmpNe(ExecutionContext context, in DecodedInstruction instruction)
     {
         _ = instruction; // Unused
-        OperandStack stack = context.Memory.OperandStack;
+        Memory.OperandStack stack = context.Memory.OperandStack;
         long b = stack.Pop();
         long a = stack.Pop();
         stack.Push(a != b ? 1L : 0L);
@@ -46,7 +44,7 @@ public static class ComparisonOps
     public static void CmpLt(ExecutionContext context, in DecodedInstruction instruction)
     {
         _ = instruction; // Unused
-        OperandStack stack = context.Memory.OperandStack;
+        Memory.OperandStack stack = context.Memory.OperandStack;
         long b = stack.Pop();
         long a = stack.Pop();
         stack.Push(a < b ? 1L : 0L);
@@ -60,7 +58,7 @@ public static class ComparisonOps
     public static void CmpLe(ExecutionContext context, in DecodedInstruction instruction)
     {
         _ = instruction; // Unused
-        OperandStack stack = context.Memory.OperandStack;
+        Memory.OperandStack stack = context.Memory.OperandStack;
         long b = stack.Pop();
         long a = stack.Pop();
         stack.Push(a <= b ? 1L : 0L);
@@ -74,7 +72,7 @@ public static class ComparisonOps
     public static void CmpGt(ExecutionContext context, in DecodedInstruction instruction)
     {
         _ = instruction; // Unused
-        OperandStack stack = context.Memory.OperandStack;
+        Memory.OperandStack stack = context.Memory.OperandStack;
         long b = stack.Pop();
         long a = stack.Pop();
         stack.Push(a > b ? 1L : 0L);
@@ -88,9 +86,63 @@ public static class ComparisonOps
     public static void CmpGe(ExecutionContext context, in DecodedInstruction instruction)
     {
         _ = instruction; // Unused
-        OperandStack stack = context.Memory.OperandStack;
+        Memory.OperandStack stack = context.Memory.OperandStack;
         long b = stack.Pop();
         long a = stack.Pop();
+        stack.Push(a >= b ? 1L : 0L);
+    }
+
+    public static void DCmpEq(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        Memory.OperandStack stack = context.Memory.OperandStack;
+        double b = new Memory.Value(stack.Pop()).AsDouble();
+        double a = new Memory.Value(stack.Pop()).AsDouble();
+        stack.Push(a == b ? 1L : 0L);
+    }
+
+    public static void DCmpNe(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        Memory.OperandStack stack = context.Memory.OperandStack;
+        double b = new Memory.Value(stack.Pop()).AsDouble();
+        double a = new Memory.Value(stack.Pop()).AsDouble();
+        stack.Push(a != b ? 1L : 0L);
+    }
+
+    public static void DCmpLt(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        Memory.OperandStack stack = context.Memory.OperandStack;
+        double b = new Memory.Value(stack.Pop()).AsDouble();
+        double a = new Memory.Value(stack.Pop()).AsDouble();
+        stack.Push(a < b ? 1L : 0L);
+    }
+
+    public static void DCmpLe(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        Memory.OperandStack stack = context.Memory.OperandStack;
+        double b = new Memory.Value(stack.Pop()).AsDouble();
+        double a = new Memory.Value(stack.Pop()).AsDouble();
+        stack.Push(a <= b ? 1L : 0L);
+    }
+
+    public static void DCmpGt(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        Memory.OperandStack stack = context.Memory.OperandStack;
+        double b = new Memory.Value(stack.Pop()).AsDouble();
+        double a = new Memory.Value(stack.Pop()).AsDouble();
+        stack.Push(a > b ? 1L : 0L);
+    }
+
+    public static void DCmpGe(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        Memory.OperandStack stack = context.Memory.OperandStack;
+        double b = new Memory.Value(stack.Pop()).AsDouble();
+        double a = new Memory.Value(stack.Pop()).AsDouble();
         stack.Push(a >= b ? 1L : 0L);
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using Tutel.Core.Compiler.AST;
 using Tutel.Core.Compiler.AST.Declarations;
 using Tutel.Core.Compiler.AST.Expressions;
@@ -42,7 +42,7 @@ public class Parser
         {
             return ParseFunctionDeclaration();
         }
-        else if (_context.Match("int"))
+        else if (_context.Match("int") || _context.Match("double"))
         {
             return ParseVariableDeclaration();
         }
@@ -132,6 +132,25 @@ public class Parser
             }
 
             return new IntType();
+        }
+        else if (_context.TryConsume("double"))
+        {
+            if (_context.TryConsume("["))
+            {
+                _context.Consume("]", "Expected ']' after '['");
+
+                if (_context.TryConsume("["))
+                {
+                    throw new ParseException(
+                        "Multi-dimensional arrays are not supported. Use only one pair of [].",
+                        _context.Current.Line,
+                        _context.Current.Column);
+                }
+
+                return new ArrayType(new DoubleType());
+            }
+
+            return new DoubleType();
         }
         else if (_context.TryConsume("void"))
         {
@@ -380,6 +399,12 @@ public class Parser
             return new IntegerLiteral { Value = long.Parse(token.Value) };
         }
 
+        if (_context.Match(TokenType.DoubleLiteral))
+        {
+            Token token = _context.Advance();
+            return new DoubleLiteral { Value = double.Parse(token.Value, System.Globalization.CultureInfo.InvariantCulture) };
+        }
+
         if (_context.TryConsume("new"))
         {
             return ParseArrayCreation();
@@ -455,15 +480,22 @@ public class Parser
     {
         Token newToken = _context.Previous;
 
-        if (!_context.TryConsume("int"))
+        TypeNode elementType;
+        if (_context.TryConsume("int"))
+        {
+            elementType = new IntType();
+        }
+        else if (_context.TryConsume("double"))
+        {
+            elementType = new DoubleType();
+        }
+        else
         {
             throw new ParseException(
-                "Expected 'int' after 'new'",
+                "Expected 'int' or 'double' after 'new'",
                 _context.Current.Line,
                 _context.Current.Column);
         }
-
-        TypeNode elementType = new IntType();
 
         if (!_context.TryConsume("["))
         {
@@ -550,7 +582,7 @@ public class Parser
         {
             return ParseBlockStatement();
         }
-        else if (_context.Match("int"))
+        else if (_context.Match("int") || _context.Match("double"))
         {
             return ParseLocalVariableDeclaration();
         }
@@ -702,7 +734,7 @@ public class Parser
 
         if (!_context.TryConsume(";"))
         {
-            if (_context.Match("int"))
+            if (_context.Match("int") || _context.Match("double"))
             {
                 initialization = ParseLocalVariableDeclaration();
             }

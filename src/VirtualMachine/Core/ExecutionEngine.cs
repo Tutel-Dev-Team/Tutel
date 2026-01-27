@@ -85,11 +85,17 @@ public sealed class ExecutionEngine
             case Opcode.PushInt:
                 StackInstructions.PushInt(context, in instruction);
                 return false;
+            case Opcode.PushDouble:
+                StackInstructions.PushInt(context, in instruction); // same layout (int64 bits)
+                return false;
             case Opcode.Pop:
                 StackInstructions.Pop(context, in instruction);
                 return false;
             case Opcode.Dup:
                 StackInstructions.Dup(context, in instruction);
+                return false;
+            case Opcode.I2D:
+                StackInstructions.I2D(context, in instruction);
                 return false;
 
             // Arithmetic operations
@@ -111,6 +117,27 @@ public sealed class ExecutionEngine
             case Opcode.Neg:
                 ArithmeticOps.Neg(context, in instruction);
                 return false;
+            case Opcode.DAdd:
+                ArithmeticOps.DAdd(context, in instruction);
+                return false;
+            case Opcode.DSub:
+                ArithmeticOps.DSub(context, in instruction);
+                return false;
+            case Opcode.DMul:
+                ArithmeticOps.DMul(context, in instruction);
+                return false;
+            case Opcode.DDiv:
+                ArithmeticOps.DDiv(context, in instruction);
+                return false;
+            case Opcode.DMod:
+                ArithmeticOps.DMod(context, in instruction);
+                return false;
+            case Opcode.DNeg:
+                ArithmeticOps.DNeg(context, in instruction);
+                return false;
+            case Opcode.DSqrt:
+                ArithmeticOps.DSqrt(context, in instruction);
+                return false;
 
             // Comparison operations
             case Opcode.CmpEq:
@@ -130,6 +157,24 @@ public sealed class ExecutionEngine
                 return false;
             case Opcode.CmpGe:
                 ComparisonOps.CmpGe(context, in instruction);
+                return false;
+            case Opcode.DCmpEq:
+                ComparisonOps.DCmpEq(context, in instruction);
+                return false;
+            case Opcode.DCmpNe:
+                ComparisonOps.DCmpNe(context, in instruction);
+                return false;
+            case Opcode.DCmpLt:
+                ComparisonOps.DCmpLt(context, in instruction);
+                return false;
+            case Opcode.DCmpLe:
+                ComparisonOps.DCmpLe(context, in instruction);
+                return false;
+            case Opcode.DCmpGt:
+                ComparisonOps.DCmpGt(context, in instruction);
+                return false;
+            case Opcode.DCmpGe:
+                ComparisonOps.DCmpGe(context, in instruction);
                 return false;
 
             // Control flow - these modify PC
@@ -175,6 +220,9 @@ public sealed class ExecutionEngine
             // I/O operations
             case Opcode.PrintInt:
                 IoOps.PrintInt(context, in instruction);
+                return false;
+            case Opcode.PrintDouble:
+                IoOps.PrintDouble(context, in instruction);
                 return false;
             case Opcode.ReadInt:
                 IoOps.ReadInt(context, in instruction);

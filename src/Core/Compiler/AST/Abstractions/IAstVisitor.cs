@@ -13,6 +13,8 @@ public interface IAstVisitor<T>
     // Выражения
     T Visit(IntegerLiteral expr);
 
+    T Visit(DoubleLiteral expr);
+
     T Visit(IdentifierExpression expr);
 
     T Visit(BinaryExpression expr);
@@ -63,6 +65,8 @@ public interface IAstVisitor<T>
 
     // Типы
     T Visit(IntType type);
+
+    T Visit(DoubleType type);
 
     T Visit(ArrayType type);
 

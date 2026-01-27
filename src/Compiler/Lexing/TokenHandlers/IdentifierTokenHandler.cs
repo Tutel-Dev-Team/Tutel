@@ -11,7 +11,7 @@ public class IdentifierTokenHandler : TokenHandlerBase
     private readonly HashSet<string> _keywords =
     [
         "if", "else", "for", "return", "func", "while",
-        "int", "array", "len", "new", "break", "continue",
+        "int", "double", "array", "len", "new", "break", "continue",
         "print", "read"
     ];
 

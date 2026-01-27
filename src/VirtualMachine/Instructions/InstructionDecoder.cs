@@ -33,24 +33,39 @@ public static class InstructionDecoder
             Opcode.Nop or
             Opcode.Pop or
             Opcode.Dup or
+            Opcode.I2D or
             Opcode.Add or
             Opcode.Sub or
             Opcode.Mul or
             Opcode.Div or
             Opcode.Mod or
             Opcode.Neg or
+            Opcode.DAdd or
+            Opcode.DSub or
+            Opcode.DMul or
+            Opcode.DDiv or
+            Opcode.DMod or
+            Opcode.DNeg or
+            Opcode.DSqrt or
             Opcode.CmpEq or
             Opcode.CmpNe or
             Opcode.CmpLt or
             Opcode.CmpLe or
             Opcode.CmpGt or
             Opcode.CmpGe or
+            Opcode.DCmpEq or
+            Opcode.DCmpNe or
+            Opcode.DCmpLt or
+            Opcode.DCmpLe or
+            Opcode.DCmpGt or
+            Opcode.DCmpGe or
             Opcode.Ret or
             Opcode.ArrayNew or
             Opcode.ArrayLoad or
             Opcode.ArrayStore or
             Opcode.ArrayLen or
             Opcode.PrintInt or
+            Opcode.PrintDouble or
             Opcode.ReadInt or
             Opcode.Halt
                 => new DecodedInstruction(opcode, 1),
@@ -73,7 +88,8 @@ public static class InstructionDecoder
                 => DecodeWithInt32(bytecode, pc, opcode),
 
             // 9-byte instructions (opcode + int64)
-            Opcode.PushInt
+            Opcode.PushInt or
+            Opcode.PushDouble
                 => DecodeWithInt64(bytecode, pc, opcode),
 
             _ => throw new InvalidOperationException($"Unknown opcode: 0x{opcodeByte:X2} at PC={pc}"),

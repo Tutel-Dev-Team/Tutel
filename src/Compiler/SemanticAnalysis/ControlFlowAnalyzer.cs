@@ -1,4 +1,4 @@
-﻿using Tutel.Core.Compiler.AST;
+using Tutel.Core.Compiler.AST;
 using Tutel.Core.Compiler.AST.Abstractions;
 using Tutel.Core.Compiler.AST.Declarations;
 using Tutel.Core.Compiler.AST.Expressions;
@@ -206,6 +206,8 @@ public class ControlFlowAnalyzer : IAstVisitor<ControlFlowAnalyzer.ControlFlowIn
 
     public ControlFlowInfo Visit(IntegerLiteral expr) => new();
 
+    public ControlFlowInfo Visit(DoubleLiteral expr) => new();
+
     public ControlFlowInfo Visit(IdentifierExpression expr) => new();
 
     public ControlFlowInfo Visit(BinaryExpression expr)
@@ -281,6 +283,8 @@ public class ControlFlowAnalyzer : IAstVisitor<ControlFlowAnalyzer.ControlFlowIn
     }
 
     public ControlFlowInfo Visit(IntType type) => new();
+
+    public ControlFlowInfo Visit(DoubleType type) => new();
 
     public ControlFlowInfo Visit(ArrayType type) => new();
 

@@ -17,6 +17,12 @@ public enum Opcode : byte
     /// <summary>Push int64 value onto stack. Format: 1 byte opcode + 8 bytes int64.</summary>
     PushInt = 0x01,
 
+    /// <summary>Push double value (as int64 bits) onto stack. Format: 1 byte opcode + 8 bytes int64 bits.</summary>
+    PushDouble = 0x04,
+
+    /// <summary>Convert int64 on stack to double bits. Format: 1 byte opcode.</summary>
+    I2D = 0x05,
+
     /// <summary>Pop and discard top of stack.</summary>
     Pop = 0x02,
 
@@ -41,6 +47,27 @@ public enum Opcode : byte
     /// <summary>Pop A, Push -A.</summary>
     Neg = 0x15,
 
+    /// <summary>Pop B, Pop A, Push (double) A+B.</summary>
+    DAdd = 0x18,
+
+    /// <summary>Pop B, Pop A, Push (double) A-B.</summary>
+    DSub = 0x19,
+
+    /// <summary>Pop B, Pop A, Push (double) A*B.</summary>
+    DMul = 0x1A,
+
+    /// <summary>Pop B, Pop A, Push (double) A/B (throws if B==0).</summary>
+    DDiv = 0x1B,
+
+    /// <summary>Pop B, Pop A, Push (double) A%B (throws if B==0).</summary>
+    DMod = 0x1C,
+
+    /// <summary>Pop A, Push (double) -A.</summary>
+    DNeg = 0x1D,
+
+    /// <summary>Pop A, Push sqrt(A) as double.</summary>
+    DSqrt = 0x1E,
+
     /// <summary>Pop B, Pop A, Push (A==B ? 1 : 0).</summary>
     CmpEq = 0x20,
 
@@ -58,6 +85,24 @@ public enum Opcode : byte
 
     /// <summary>Pop B, Pop A, Push (A&gt;=B ? 1 : 0).</summary>
     CmpGe = 0x25,
+
+    /// <summary>Pop B, Pop A, Push (double A==B ? 1 : 0).</summary>
+    DCmpEq = 0x28,
+
+    /// <summary>Pop B, Pop A, Push (double A!=B ? 1 : 0).</summary>
+    DCmpNe = 0x29,
+
+    /// <summary>Pop B, Pop A, Push (double A&lt;B ? 1 : 0).</summary>
+    DCmpLt = 0x2A,
+
+    /// <summary>Pop B, Pop A, Push (double A&lt;=B ? 1 : 0).</summary>
+    DCmpLe = 0x2B,
+
+    /// <summary>Pop B, Pop A, Push (double A&gt;B ? 1 : 0).</summary>
+    DCmpGt = 0x2C,
+
+    /// <summary>Pop B, Pop A, Push (double A&gt;=B ? 1 : 0).</summary>
+    DCmpGe = 0x2D,
 
     /// <summary>Unconditional jump. Format: 1 byte opcode + 4 bytes int32 offset.</summary>
     Jmp = 0x30,
@@ -103,6 +148,9 @@ public enum Opcode : byte
 
     /// <summary>Read integer from stdin. Push the read value.</summary>
     ReadInt = 0x57,
+
+    /// <summary>Print double to stdout. Pop value (as double bits) and print it.</summary>
+    PrintDouble = 0x58,
 
     /// <summary>Halt execution. Return top of stack as result.</summary>
     Halt = 0xFF,
