@@ -18,47 +18,25 @@ public static class OpcodeInfo
         return opcode switch
         {
             // 1-byte instructions (opcode only)
-            Opcode.Nop => 1,
-            Opcode.Pop => 1,
-            Opcode.Dup => 1,
-            Opcode.Add => 1,
-            Opcode.Sub => 1,
-            Opcode.Mul => 1,
-            Opcode.Div => 1,
-            Opcode.Mod => 1,
-            Opcode.Neg => 1,
-            Opcode.CmpEq => 1,
-            Opcode.CmpNe => 1,
-            Opcode.CmpLt => 1,
-            Opcode.CmpLe => 1,
-            Opcode.CmpGt => 1,
-            Opcode.CmpGe => 1,
-            Opcode.Ret => 1,
-            Opcode.ArrayNew => 1,
-            Opcode.ArrayLoad => 1,
-            Opcode.ArrayStore => 1,
-            Opcode.ArrayLen => 1,
-            Opcode.PrintInt => 1,
-            Opcode.ReadInt => 1,
-            Opcode.Halt => 1,
+            Opcode.Nop or Opcode.Pop or Opcode.Dup or Opcode.Add or Opcode.Sub or Opcode.Mul or Opcode.Div or Opcode.Mod
+                or Opcode.Neg or Opcode.DAdd or Opcode.DSub or Opcode.DMul or Opcode.DDiv or Opcode.DMod
+                or Opcode.DNeg or Opcode.DSqrt or Opcode.I2D or Opcode.CmpEq or Opcode.CmpNe or Opcode.CmpLt
+                or Opcode.CmpLe or Opcode.CmpGt or Opcode.CmpGe or Opcode.DCmpEq or Opcode.DCmpNe
+                or Opcode.DCmpLt or Opcode.DCmpLe or Opcode.DCmpGt or Opcode.DCmpGe or Opcode.Ret
+                or Opcode.ArrayNew or Opcode.ArrayLoad or Opcode.ArrayStore or Opcode.ArrayLen
+                or Opcode.PrintInt or Opcode.PrintDouble or Opcode.ReadInt or Opcode.Halt => 1,
 
             // 2-byte instructions (opcode + uint8)
-            Opcode.LoadLocal => 2,
-            Opcode.StoreLocal => 2,
+            Opcode.LoadLocal or Opcode.StoreLocal => 2,
 
             // 3-byte instructions (opcode + uint16)
-            Opcode.Call => 3,
-            Opcode.LoadGlobal => 3,
-            Opcode.StoreGlobal => 3,
+            Opcode.Call or Opcode.LoadGlobal or Opcode.StoreGlobal => 3,
 
             // 5-byte instructions (opcode + int32)
-            Opcode.Jmp => 5,
-            Opcode.Jz => 5,
-            Opcode.Jnz => 5,
+            Opcode.Jmp or Opcode.Jz or Opcode.Jnz => 5,
 
             // 9-byte instructions (opcode + int64)
-            Opcode.PushInt => 9,
-
+            Opcode.PushInt or Opcode.PushDouble => 9,
             _ => throw new ArgumentOutOfRangeException(nameof(opcode), opcode, $"Unknown opcode: 0x{(byte)opcode:X2}"),
         };
     }

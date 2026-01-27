@@ -5,22 +5,26 @@ namespace Tutel.VirtualMachine.Memory;
 
 /// <summary>
 /// Represents a value that can be stored on the operand stack or in variables.
-/// In the Tutel VM, all values are 64-bit signed integers.
-/// Array handles are stored as int indices into the heap with a tag bit.
+/// In the Tutel VM, all values are stored as raw 64-bit payloads.
+/// - Integers are stored directly as int64.
+/// - Doubles are stored as their IEEE-754 bit pattern.
+/// - Array handles are NaN-boxed to avoid collisions with double bit patterns.
 /// </summary>
 /// <remarks>
-/// The VM uses a tagged representation where:
-/// - Numeric values are stored directly as long (high bit = 0)
-/// - Array handles are stored as long with high bit set (high bit = 1)
-/// - Boolean results (from comparisons) are 1 for true, 0 for false.
+/// We previously used the high bit as a tag for arrays, which breaks as soon as
+/// negative doubles appear (their high bit is also set). To support real double
+/// arithmetic, we NaN-box array handles using a quiet-NaN pattern.
+/// Boolean results (from comparisons) are still 1 for true, 0 for false.
 /// </remarks>
 public readonly record struct Value(long Raw)
 {
     /// <summary>
-    /// Tag bit used to distinguish array handles from numeric values.
-    /// Set to 1 for array handles, 0 for numbers.
+    /// NaN-box tag mask and pattern used to distinguish array handles.
+    /// The pattern corresponds to a quiet NaN with a reserved payload prefix.
     /// </summary>
-    private const long ArrayTag = 1L << 63;
+    private const ulong ArrayTagMask = 0x7FF8_0000_0000_0000UL;
+    private const ulong ArrayTagPattern = 0x7FF8_0000_0000_0000UL;
+    private const ulong ArrayPayloadMask = 0x0000_0000_FFFF_FFFFUL;
 
     /// <summary>
     /// Creates a Value from an integer.
@@ -31,6 +35,16 @@ public readonly record struct Value(long Raw)
     /// Extracts the raw long value.
     /// </summary>
     public static implicit operator long(Value value) => value.Raw;
+
+    /// <summary>
+    /// Creates a Value from a double by converting it to long bits.
+    /// </summary>
+    public static Value FromDouble(double value) => new(BitConverter.DoubleToInt64Bits(value));
+
+    /// <summary>
+    /// Extracts the double value from this Value.
+    /// </summary>
+    public double AsDouble() => BitConverter.Int64BitsToDouble(Raw);
 
     /// <summary>
     /// Creates a Value from an array handle with tag.
@@ -53,21 +67,34 @@ public readonly record struct Value(long Raw)
     public bool IsTrue => Raw != 0;
 
     /// <summary>
-    /// Tags a handle as an array handle by setting the high bit.
+    /// Tags a handle as an array handle using NaN-boxing.
     /// </summary>
-#pragma warning disable IDE0004 // Remove unnecessary cast
-    internal static long TagAsArray(int handle) => unchecked((long)((ulong)(uint)handle | (ulong)ArrayTag));
-#pragma warning restore IDE0004
+    internal static long TagAsArray(int handle)
+    {
+        if (handle < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(handle), handle, "Array handle cannot be negative");
+        }
+
+        ulong payload = (uint)handle;
+        return unchecked((long)(ArrayTagPattern | payload));
+    }
 
     /// <summary>
     /// Checks if a raw value is an array handle.
     /// </summary>
-    internal static bool IsArray(long value) => (value & ArrayTag) != 0;
+    internal static bool IsArray(long value)
+    {
+        return ((ulong)value & ArrayTagMask) == ArrayTagPattern;
+    }
 
     /// <summary>
     /// Extracts the handle from a tagged value.
     /// </summary>
-    internal static int GetHandle(long value) => (int)(value & ~ArrayTag);
+    internal static int GetHandle(long value)
+    {
+        return (int)((ulong)value & ArrayPayloadMask);
+    }
 
     /// <inheritdoc/>
     public override string ToString() => IsArrayHandle ? $"[H:{AsArrayHandle()}]" : Raw.ToString();

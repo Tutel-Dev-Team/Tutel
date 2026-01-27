@@ -1,4 +1,4 @@
-﻿using Tutel.Core.Compiler.AST;
+using Tutel.Core.Compiler.AST;
 using Tutel.Core.Compiler.AST.Abstractions;
 using Tutel.Core.Compiler.AST.Declarations;
 using Tutel.Core.Compiler.AST.Expressions;
@@ -226,6 +226,12 @@ public class SymbolTableBuilder : IAstVisitor<object?>
         FunctionSymbol? func = _symbolTable.FindFunction(expr.FunctionName);
         if (func == null)
         {
+            if (expr.FunctionName == "sqrt" && expr.Arguments.Count == 1)
+            {
+                expr.Arguments[0].Accept(this);
+                return null;
+            }
+
             AddError($"Неизвестная функция '{expr.FunctionName}'", expr.Line);
         }
         else
@@ -313,7 +319,17 @@ public class SymbolTableBuilder : IAstVisitor<object?>
         return null;
     }
 
+    public object? Visit(DoubleLiteral expr)
+    {
+        return null;
+    }
+
     public object? Visit(IntType type)
+    {
+        return null;
+    }
+
+    public object? Visit(DoubleType type)
     {
         return null;
     }

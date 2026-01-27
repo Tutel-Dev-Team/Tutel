@@ -104,4 +104,74 @@ public static class ArithmeticOps
         long a = stack.Pop();
         stack.Push(-a);
     }
+
+    public static void DAdd(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        Memory.OperandStack stack = context.Memory.OperandStack;
+        double b = new Memory.Value(stack.Pop()).AsDouble();
+        double a = new Memory.Value(stack.Pop()).AsDouble();
+        stack.Push(Memory.Value.FromDouble(a + b).Raw);
+    }
+
+    public static void DSub(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        Memory.OperandStack stack = context.Memory.OperandStack;
+        double b = new Memory.Value(stack.Pop()).AsDouble();
+        double a = new Memory.Value(stack.Pop()).AsDouble();
+        stack.Push(Memory.Value.FromDouble(a - b).Raw);
+    }
+
+    public static void DMul(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        Memory.OperandStack stack = context.Memory.OperandStack;
+        double b = new Memory.Value(stack.Pop()).AsDouble();
+        double a = new Memory.Value(stack.Pop()).AsDouble();
+        stack.Push(Memory.Value.FromDouble(a * b).Raw);
+    }
+
+    public static void DDiv(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        Memory.OperandStack stack = context.Memory.OperandStack;
+        double b = new Memory.Value(stack.Pop()).AsDouble();
+        double a = new Memory.Value(stack.Pop()).AsDouble();
+
+        if (b == 0.0)
+            throw new DivideByZeroException("Division by zero");
+
+        stack.Push(Memory.Value.FromDouble(a / b).Raw);
+    }
+
+    public static void DMod(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        Memory.OperandStack stack = context.Memory.OperandStack;
+        double b = new Memory.Value(stack.Pop()).AsDouble();
+        double a = new Memory.Value(stack.Pop()).AsDouble();
+
+        if (b == 0.0)
+            throw new DivideByZeroException("Modulo by zero");
+
+        stack.Push(Memory.Value.FromDouble(a % b).Raw);
+    }
+
+    public static void DNeg(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        Memory.OperandStack stack = context.Memory.OperandStack;
+        double a = new Memory.Value(stack.Pop()).AsDouble();
+        stack.Push(Memory.Value.FromDouble(-a).Raw);
+    }
+
+    public static void DSqrt(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction;
+        Memory.OperandStack stack = context.Memory.OperandStack;
+        double a = new Memory.Value(stack.Pop()).AsDouble();
+        double result = Math.Sqrt(a);
+        stack.Push(Memory.Value.FromDouble(result).Raw);
+    }
 }

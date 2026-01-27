@@ -12,6 +12,8 @@ public static class Disassembler
     {
         { OpCode.NOP, 0 },
         { OpCode.PUSH_INT, 8 },
+        { OpCode.PUSH_DOUBLE, 8 },
+        { OpCode.I2D, 0 },
         { OpCode.POP, 0 },
         { OpCode.DUP, 0 },
         { OpCode.ADD, 0 },
@@ -20,12 +22,25 @@ public static class Disassembler
         { OpCode.DIV, 0 },
         { OpCode.MOD, 0 },
         { OpCode.NEG, 0 },
+        { OpCode.DADD, 0 },
+        { OpCode.DSUB, 0 },
+        { OpCode.DMUL, 0 },
+        { OpCode.DDIV, 0 },
+        { OpCode.DMOD, 0 },
+        { OpCode.DNEG, 0 },
+        { OpCode.DSQRT, 0 },
         { OpCode.CMP_EQ, 0 },
         { OpCode.CMP_NE, 0 },
         { OpCode.CMP_LT, 0 },
         { OpCode.CMP_LE, 0 },
         { OpCode.CMP_GT, 0 },
         { OpCode.CMP_GE, 0 },
+        { OpCode.DCMP_EQ, 0 },
+        { OpCode.DCMP_NE, 0 },
+        { OpCode.DCMP_LT, 0 },
+        { OpCode.DCMP_LE, 0 },
+        { OpCode.DCMP_GT, 0 },
+        { OpCode.DCMP_GE, 0 },
         { OpCode.LOAD_LOCAL, 1 },
         { OpCode.STORE_LOCAL, 1 },
         { OpCode.LOAD_GLOBAL, 2 },
@@ -40,6 +55,7 @@ public static class Disassembler
         { OpCode.ARRAY_STORE, 0 },
         { OpCode.ARRAY_LEN, 0 },
         { OpCode.PRINT_INT, 0 },
+        { OpCode.PRINT_DOUBLE, 0 },
         { OpCode.READ_INT, 0 },
     };
 
@@ -131,6 +147,11 @@ public static class Disassembler
                     case OpCode.PUSH_INT:
                         long intValue = BitConverter.ToInt64(argBytes, 0);
                         sb.Append($" {intValue}");
+                        break;
+                    case OpCode.PUSH_DOUBLE:
+                        long doubleBits = BitConverter.ToInt64(argBytes, 0);
+                        double doubleValue = BitConverter.Int64BitsToDouble(doubleBits);
+                        sb.Append($" {doubleValue:R}");
                         break;
 
                     case OpCode.LOAD_LOCAL:

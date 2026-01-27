@@ -1,4 +1,4 @@
-﻿using Tutel.Compiler.SemanticAnalysis;
+using Tutel.Compiler.SemanticAnalysis;
 using Tutel.Core.Compiler.AST;
 using Tutel.Core.Compiler.AST.Abstractions;
 using Tutel.Core.Compiler.AST.Declarations;
@@ -68,6 +68,14 @@ public class BytecodeGenerator : IAstVisitor<object?>
         return null;
     }
 
+    public object? Visit(DoubleLiteral expr)
+    {
+        long doubleAsLong = BitConverter.DoubleToInt64Bits(expr.Value);
+        _emitter.Emit(OpCode.PUSH_DOUBLE);
+        _emitter.EmitInt64(doubleAsLong);
+        return null;
+    }
+
     public object? Visit(IdentifierExpression expr)
     {
         VariableSymbol? variable = FindVariable(expr.Name, out bool isGlobal);
@@ -92,56 +100,24 @@ public class BytecodeGenerator : IAstVisitor<object?>
 
     public object? Visit(BinaryExpression expr)
     {
-        switch (expr.Operator.Value)
-        {
-            case "&&":
-                return GenerateLogicalAnd(expr);
-            case "||":
-                return GenerateLogicalOr(expr);
-        }
+        // short-circuit логика оставляем как есть
+        if (expr.Operator.Value == "&&") return GenerateLogicalAnd(expr);
+        if (expr.Operator.Value == "||") return GenerateLogicalOr(expr);
+
+        TypeNode leftType = InferExprType(expr.Left);
+        TypeNode rightType = InferExprType(expr.Right);
+
+        bool isDouble = leftType is DoubleType || rightType is DoubleType;
 
         expr.Left.Accept(this);
+        if (leftType is IntType && isDouble)
+            _emitter.Emit(OpCode.I2D);
+
         expr.Right.Accept(this);
+        if (rightType is IntType && isDouble)
+            _emitter.Emit(OpCode.I2D);
 
-        switch (expr.Operator.Value)
-        {
-            case "+":
-                _emitter.Emit(OpCode.ADD);
-                break;
-            case "-":
-                _emitter.Emit(OpCode.SUB);
-                break;
-            case "*":
-                _emitter.Emit(OpCode.MUL);
-                break;
-            case "/":
-                _emitter.Emit(OpCode.DIV);
-                break;
-            case "%":
-                _emitter.Emit(OpCode.MOD);
-                break;
-            case "==":
-                _emitter.Emit(OpCode.CMP_EQ);
-                break;
-            case "!=":
-                _emitter.Emit(OpCode.CMP_NE);
-                break;
-            case "<":
-                _emitter.Emit(OpCode.CMP_LT);
-                break;
-            case "<=":
-                _emitter.Emit(OpCode.CMP_LE);
-                break;
-            case ">":
-                _emitter.Emit(OpCode.CMP_GT);
-                break;
-            case ">=":
-                _emitter.Emit(OpCode.CMP_GE);
-                break;
-            default:
-                throw new InvalidOperationException($"Неподдерживаемый бинарный оператор: {expr.Operator.Type}");
-        }
-
+        _emitter.Emit(GetBinaryOpCode(expr.Operator.Value, isDouble));
         return null;
     }
 
@@ -152,12 +128,13 @@ public class BytecodeGenerator : IAstVisitor<object?>
             return GenerateLogicalNot(expr);
         }
 
+        TypeNode operandType = InferExprType(expr.Operand);
         expr.Operand.Accept(this);
 
         switch (expr.Operator.Value)
         {
             case "-":
-                _emitter.Emit(OpCode.NEG);
+                _emitter.Emit(operandType is DoubleType ? OpCode.DNEG : OpCode.NEG);
                 break;
             default:
                 throw new InvalidOperationException($"Неподдерживаемый унарный оператор: {expr.Operator.Type}");
@@ -168,15 +145,36 @@ public class BytecodeGenerator : IAstVisitor<object?>
 
     public object? Visit(FunctionCallExpression expr)
     {
-        foreach (ExpressionAst t in expr.Arguments)
+        // Встроенная sqrt(x): компилируем напрямую в опкод.
+        if (expr.FunctionName == "sqrt" && expr.Arguments.Count == 1)
         {
-            t.Accept(this);
+            ExpressionAst argument = expr.Arguments[0];
+            TypeNode argumentType = InferExprType(argument);
+
+            argument.Accept(this);
+            if (argumentType is IntType)
+            {
+                _emitter.Emit(OpCode.I2D);
+            }
+
+            _emitter.Emit(OpCode.DSQRT);
+            return null;
         }
 
         FunctionSymbol? func = _symbols.Functions.FirstOrDefault(f => f.Name == expr.FunctionName);
         if (func == null)
         {
             throw new InvalidOperationException($"Неизвестная функция: {expr.FunctionName}");
+        }
+
+        for (int i = 0; i < expr.Arguments.Count; i++)
+        {
+            ExpressionAst argument = expr.Arguments[i];
+            TypeNode argumentType = InferExprType(argument);
+            TypeNode parameterType = func.Parameters[i].Type;
+
+            argument.Accept(this);
+            EmitNumericConversionIfNeeded(parameterType, argumentType);
         }
 
         int funcIndex = _symbols.Functions.IndexOf(func);
@@ -213,6 +211,9 @@ public class BytecodeGenerator : IAstVisitor<object?>
 
         _emitter.Emit(OpCode.DUP);
 
+        var elementTypes = expr.Elements.Select(InferExprType).ToList();
+        bool arrayIsDouble = elementTypes.Any(t => t is DoubleType);
+
         for (int i = 0; i < expr.Elements.Count; i++)
         {
             if (i > 0)
@@ -224,6 +225,10 @@ public class BytecodeGenerator : IAstVisitor<object?>
             _emitter.EmitInt64(i);
 
             expr.Elements[i].Accept(this);
+            if (arrayIsDouble && elementTypes[i] is IntType)
+            {
+                _emitter.Emit(OpCode.I2D);
+            }
 
             _emitter.Emit(OpCode.ARRAY_STORE);
         }
@@ -240,13 +245,15 @@ public class BytecodeGenerator : IAstVisitor<object?>
 
     public object? Visit(AssignmentExpression expr)
     {
-        expr.Value.Accept(this);
-
         VariableSymbol? variable = FindVariable(expr.Target.Name, out bool isGlobal);
         if (variable == null)
         {
             throw new InvalidOperationException($"Неизвестная переменная: {expr.Target.Name}");
         }
+
+        TypeNode valueType = InferExprType(expr.Value);
+        expr.Value.Accept(this);
+        EmitNumericConversionIfNeeded(variable.Type, valueType);
 
         if (isGlobal)
         {
@@ -264,9 +271,17 @@ public class BytecodeGenerator : IAstVisitor<object?>
 
     public object? Visit(ArrayAssignmentExpression expr)
     {
+        TypeNode arrayType = InferExprType(expr.Target.Array);
+        TypeNode valueType = InferExprType(expr.Value);
+
         expr.Target.Array.Accept(this);
         expr.Target.Index.Accept(this);
         expr.Value.Accept(this);
+
+        if (arrayType is ArrayType arrayTypeNode)
+        {
+            EmitNumericConversionIfNeeded(arrayTypeNode.ElementType, valueType);
+        }
 
         _emitter.Emit(OpCode.ARRAY_STORE);
 
@@ -310,8 +325,9 @@ public class BytecodeGenerator : IAstVisitor<object?>
     {
         foreach (ExpressionAst expr in stmt.Expressions)
         {
+            TypeNode exprType = InferExprType(expr);
             expr.Accept(this);
-            _emitter.Emit(OpCode.PRINT_INT);
+            _emitter.Emit(exprType is DoubleType ? OpCode.PRINT_DOUBLE : OpCode.PRINT_INT);
         }
 
         return null;
@@ -331,13 +347,15 @@ public class BytecodeGenerator : IAstVisitor<object?>
     {
         if (stmt.InitValue != null)
         {
-            stmt.InitValue.Accept(this);
-
             VariableSymbol? variable = FindVariable(stmt.Name, out bool isGlobal);
             if (variable == null)
             {
                 throw new InvalidOperationException($"Переменная не найдена в таблице символов: {stmt.Name}");
             }
+
+            TypeNode initType = InferExprType(stmt.InitValue);
+            stmt.InitValue.Accept(this);
+            EmitNumericConversionIfNeeded(variable.Type, initType);
 
             if (isGlobal)
             {
@@ -472,6 +490,8 @@ public class BytecodeGenerator : IAstVisitor<object?>
 
     public object? Visit(IntType type) => null;
 
+    public object? Visit(DoubleType type) => null;
+
     public object? Visit(ArrayType type) => null;
 
     public object? Visit(VoidType type) => null;
@@ -480,6 +500,24 @@ public class BytecodeGenerator : IAstVisitor<object?>
     {
         return null;
     }
+
+    private static OpCode GetBinaryOpCode(string op, bool isDouble) => op switch
+    {
+        "+" => isDouble ? OpCode.DADD : OpCode.ADD,
+        "-" => isDouble ? OpCode.DSUB : OpCode.SUB,
+        "*" => isDouble ? OpCode.DMUL : OpCode.MUL,
+        "/" => isDouble ? OpCode.DDIV : OpCode.DIV,
+        "%" => isDouble ? OpCode.DMOD : OpCode.MOD,
+
+        "==" => isDouble ? OpCode.DCMP_EQ : OpCode.CMP_EQ,
+        "!=" => isDouble ? OpCode.DCMP_NE : OpCode.CMP_NE,
+        "<" => isDouble ? OpCode.DCMP_LT : OpCode.CMP_LT,
+        "<=" => isDouble ? OpCode.DCMP_LE : OpCode.CMP_LE,
+        ">" => isDouble ? OpCode.DCMP_GT : OpCode.CMP_GT,
+        ">=" => isDouble ? OpCode.DCMP_GE : OpCode.CMP_GE,
+
+        _ => throw new InvalidOperationException($"Неподдерживаемый бинарный оператор: {op}"),
+    };
 
     private void GenerateFunction(FunctionSymbol funcSymbol, ProgramAst program)
     {
@@ -554,7 +592,9 @@ public class BytecodeGenerator : IAstVisitor<object?>
                 continue;
             }
 
+            TypeNode initType = InferExprType(initializer);
             initializer.Accept(this);
+            EmitNumericConversionIfNeeded(global.Type, initType);
             _emitter.Emit(OpCode.STORE_GLOBAL);
             _emitter.EmitUInt16((ushort)global.Index);
         }
@@ -654,6 +694,74 @@ public class BytecodeGenerator : IAstVisitor<object?>
         {
             AssignmentExpression or ArrayAssignmentExpression => false,
             _ => true,
+        };
+    }
+
+    private void EmitNumericConversionIfNeeded(TypeNode targetType, TypeNode valueType)
+    {
+        if (targetType is DoubleType && valueType is IntType)
+        {
+            _emitter.Emit(OpCode.I2D);
+        }
+    }
+
+    private TypeNode InferExprType(ExpressionAst expr)
+    {
+        return expr switch
+        {
+            IntegerLiteral => new IntType(),
+            DoubleLiteral => new DoubleType(),
+            IdentifierExpression id => FindVariable(id.Name, out _)?.Type ?? new ErrorType(),
+            ReadExpression => new IntType(),
+            LengthExpression => new IntType(),
+            FunctionCallExpression call => InferFunctionCallType(call),
+            ArrayAccessExpression access => InferExprType(access.Array) is ArrayType at
+                ? at.ElementType
+                : new ErrorType(),
+            ArrayCreationExpression creation => creation.ArrayType,
+            ArrayLiteralExpression lit => InferArrayLiteralType(lit),
+            AssignmentExpression assign => InferExprType(assign.Value),
+            ArrayAssignmentExpression aassign => InferExprType(aassign.Value),
+            UnaryExpression un => InferExprType(un.Operand),
+            BinaryExpression bin => InferBinaryType(bin),
+            _ => new ErrorType(),
+        };
+    }
+
+    private ArrayType InferArrayLiteralType(ArrayLiteralExpression literal)
+    {
+        if (literal.Elements.Count == 0)
+        {
+            return new ArrayType(new IntType());
+        }
+
+        bool hasDouble = literal.Elements.Select(InferExprType).Any(t => t is DoubleType);
+        return new ArrayType(hasDouble ? new DoubleType() : new IntType());
+    }
+
+    private TypeNode InferFunctionCallType(FunctionCallExpression call)
+    {
+        if (call.FunctionName == "sqrt" && call.Arguments.Count == 1)
+        {
+            return new DoubleType();
+        }
+
+        return _symbols.FindFunction(call.FunctionName)?.ReturnType ?? new ErrorType();
+    }
+
+    private TypeNode InferBinaryType(BinaryExpression expr)
+    {
+        TypeNode left = InferExprType(expr.Left);
+        TypeNode right = InferExprType(expr.Right);
+
+        return expr.Operator.Value switch
+        {
+            "&&" or "||" => new IntType(),
+            "+" or "-" or "*" or "/" or "%" => (left is DoubleType || right is DoubleType)
+                ? new DoubleType()
+                : new IntType(),
+            "==" or "!=" or "<" or "<=" or ">" or ">=" => new IntType(),
+            _ => new ErrorType(),
         };
     }
 }

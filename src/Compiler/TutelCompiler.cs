@@ -1,4 +1,4 @@
-﻿using Tutel.Compiler.Bytecode;
+using Tutel.Compiler.Bytecode;
 using Tutel.Compiler.Lexing;
 using Tutel.Compiler.Lexing.SourceReaders;
 using Tutel.Compiler.Lexing.TokenHandlers;
@@ -18,7 +18,7 @@ public class TutelCompiler
         ITokenHandler tokenChain = new DelimiterTokenHandler()
             .AddNext(new CommentsTokenHandler())
             .AddNext(new OperatorTokenHandler())
-            .AddNext(new IntegerTokenHandler())
+            .AddNext(new DoubleTokenHandler())
             .AddNext(new IdentifierTokenHandler())
             .AddNext(new ErrorTokenHandler());
 

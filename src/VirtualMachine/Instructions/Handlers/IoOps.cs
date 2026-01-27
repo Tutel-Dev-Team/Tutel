@@ -21,6 +21,19 @@ public static class IoOps
     }
 
     /// <summary>
+    /// Executes PRINT_DOUBLE: Pop value (as double bits) and print it to stdout.
+    /// </summary>
+    /// <param name="context">Execution context.</param>
+    /// <param name="instruction">Decoded instruction.</param>
+    public static void PrintDouble(ExecutionContext context, in DecodedInstruction instruction)
+    {
+        _ = instruction; // Unused
+        long raw = context.Memory.OperandStack.Pop();
+        double value = new Memory.Value(raw).AsDouble();
+        Console.WriteLine(value.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>
     /// Executes READ_INT: Read integer from stdin and push onto stack.
     /// </summary>
     /// <param name="context">Execution context.</param>
