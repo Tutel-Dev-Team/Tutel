@@ -17,7 +17,7 @@ Complete bytecode Virtual Machine for the Tutel language. Interprets `.tbc` file
 - **Memory Management**: Heap for arrays (prepared for GC integration)
 - **CLI**: Run bytecode via command line
 
-### Files Added (19 source files)
+### Files
 
 #### Core (`src/VirtualMachine/Core/`)
 | File | Purpose |
